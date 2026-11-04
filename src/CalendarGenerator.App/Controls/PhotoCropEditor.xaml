@@ -1,0 +1,45 @@
+<UserControl x:Class="CalendarGenerator.App.Controls.PhotoCropEditor"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             Background="#F7F2EA"
+             ClipToBounds="True">
+    <Grid>
+        <Border x:Name="EmptyHint" Background="#22FFFFFF">
+            <TextBlock Text="Válasszon egy fényképet a vágáshoz."
+                       HorizontalAlignment="Center"
+                       VerticalAlignment="Center"
+                       FontFamily="Georgia"
+                       FontSize="15"
+                       Foreground="#88665544"
+                       TextAlignment="Center"
+                       TextWrapping="Wrap"
+                       Margin="24" />
+        </Border>
+
+        <Grid x:Name="EditorRoot" Visibility="Collapsed">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="*" />
+                <RowDefinition Height="Auto" />
+            </Grid.RowDefinitions>
+
+            <Border Background="#1A000000" Margin="4" CornerRadius="4" ClipToBounds="True">
+                <Canvas x:Name="Surface"
+                        SizeChanged="Surface_SizeChanged"
+                        Background="Transparent"
+                        ClipToBounds="True" />
+            </Border>
+
+            <DockPanel Grid.Row="1" Margin="6,8,6,6">
+                <Button DockPanel.Dock="Right"
+                        Content="Vágás visszaállítása"
+                        Style="{StaticResource SecondaryButton}"
+                        Click="ResetCrop_Click"
+                        Padding="10,5" />
+                <TextBlock Text="Húzza a keretet / sarkokat a vágáshoz"
+                           FontSize="11"
+                           Foreground="#6A655C"
+                           VerticalAlignment="Center" />
+            </DockPanel>
+        </Grid>
+    </Grid>
+</UserControl>
