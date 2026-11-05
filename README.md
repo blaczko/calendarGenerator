@@ -31,10 +31,7 @@ Projektek helye: `%USERPROFILE%\Documents\CatholicCalendarCreator\Projects`
 
 ---
 
-## Kapcsolódó modul: naptár rendelési platform (web)
+## Kapcsolódó modul: Google Apps Script rendelés
 
-A `calendar-order-platform/` mappa **külön, elszigetelt** Node.js/React alkalmazás megrendelések fogadására.  
-A WPF naptárkészítőt nem módosítja.
-
-Részletek: [calendar-order-platform/README.md](calendar-order-platform/README.md)  
-Magyar telepítési útmutató: [calendar-order-platform/TELEPITESI_UTMUTATO_HU.md](calendar-order-platform/TELEPITESI_UTMUTATO_HU.md)
+A webes megrendelő / admin felület a `google-apps-script/` mappában van (Drive + Sheets).  
+Részletek: [google-apps-script/README.md](google-apps-script/README.md)

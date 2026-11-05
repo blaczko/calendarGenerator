@@ -4,10 +4,13 @@ using System.Windows;
 using System.Windows.Media.Imaging;
 using CalendarGenerator.App.Controls;
 using CalendarGenerator.App.Services;
+using CalendarGenerator.App.Windows;
 using CalendarGenerator.Core.Calendar;
 using CalendarGenerator.Core.Models;
 using CalendarGenerator.Core.NameDays;
+using CalendarGenerator.Core.Orders;
 using CalendarGenerator.Core.Photos;
+using CalendarGenerator.Core.Settings;
 using CalendarGenerator.Core.Storage;
 using CalendarGenerator.Core.Templates;
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -24,7 +27,13 @@ public partial class MainViewModel : ObservableObject
     private readonly CalendarEngine _calendarEngine;
     private readonly PageRenderService _pageRender = new();
     private readonly PdfExportService _pdfExport;
+    private readonly AppSettingsStore _appSettingsStore = new();
+    private readonly LocalOrderRepository _orderRepo = new();
+    private readonly GoogleDriveOrderSyncService _driveSync = new();
+    private readonly OrderProjectLoader _orderLoader = new();
+    private AppSettings _appSettings;
     private CancellationTokenSource? _autoSaveCts;
+    private readonly List<OrderRecord> _allOrders = [];
 
     public event EventHandler? PhotosChanged;
 
@@ -33,6 +42,7 @@ public partial class MainViewModel : ObservableObject
         _nameDays = new NameDayRegistry([new HungarianCatholicNameDayProvider()]);
         _calendarEngine = new CalendarEngine(_nameDays.Get("hu-catholic"));
         _pdfExport = new PdfExportService(_pageRender, _calendarEngine);
+        _appSettings = _appSettingsStore.Load();
 
         Project = new CalendarProject();
         Years = Enumerable.Range(DateTime.Now.Year - 1, 12).ToList();
@@ -49,6 +59,7 @@ public partial class MainViewModel : ObservableObject
         RefreshTemplates();
         RefreshEvents();
         RefreshPhotos();
+        RefreshOrders();
         _ = RefreshPreviewAsync();
         ScheduleAutoSave();
     }
@@ -94,7 +105,7 @@ public partial class MainViewModel : ObservableObject
     ];
 
     [ObservableProperty] private CalendarProject _project = null!;
-    [ObservableProperty] private NavPage _currentPage = NavPage.Settings;
+    [ObservableProperty] private NavPage _currentPage = NavPage.Admin;
     [ObservableProperty] private int _selectedMonth = 1;
     [ObservableProperty] private string _statusMessage = "Készen áll.";
     [ObservableProperty] private bool _isBusy;
@@ -109,12 +120,19 @@ public partial class MainViewModel : ObservableObject
     [ObservableProperty] private PageOrientation _selectedOrientation = PageOrientation.Portrait;
     [ObservableProperty] private string _newTemplateName = string.Empty;
     [ObservableProperty] private string _newTemplateImagePath = string.Empty;
+    [ObservableProperty] private string _orderSearch = string.Empty;
+    [ObservableProperty] private OrderRecord? _selectedOrder;
+    [ObservableProperty] private string _activeOrderId = "—";
     private bool _suppressTemplateApply;
+
+    public ObservableCollection<OrderRecord> FilteredOrders { get; } = new();
+    public IReadOnlyList<string> OrderStatuses { get; } =
+        ["NEW", "IN_PROGRESS", "WAITING_FOR_CUSTOMER", "COMPLETED", "CANCELLED"];
 
     public bool CanDeleteSelectedTemplate =>
         Templates.FirstOrDefault(t => t.Id == SelectedTemplateId)?.IsCustom == true;
 
-    public bool IsSettings => CurrentPage == NavPage.Settings;
+    public bool IsAdmin => CurrentPage == NavPage.Admin;
     public bool IsPhotos => CurrentPage == NavPage.Photos;
     public bool IsEvents => CurrentPage == NavPage.Events;
     public bool IsTemplates => CurrentPage == NavPage.Templates;
@@ -123,7 +141,7 @@ public partial class MainViewModel : ObservableObject
 
     partial void OnCurrentPageChanged(NavPage value)
     {
-        OnPropertyChanged(nameof(IsSettings));
+        OnPropertyChanged(nameof(IsAdmin));
         OnPropertyChanged(nameof(IsPhotos));
         OnPropertyChanged(nameof(IsEvents));
         OnPropertyChanged(nameof(IsTemplates));
@@ -133,6 +151,8 @@ public partial class MainViewModel : ObservableObject
         if (value is NavPage.Preview or NavPage.Export or NavPage.Templates or NavPage.Photos)
             _ = RefreshPreviewAsync();
     }
+
+    partial void OnOrderSearchChanged(string value) => ApplyOrderFilter();
 
     partial void OnSelectedMonthChanged(int value)
     {
@@ -193,6 +213,142 @@ public partial class MainViewModel : ObservableObject
     {
         if (Enum.TryParse<NavPage>(page, out var nav))
             CurrentPage = nav;
+    }
+
+    [RelayCommand]
+    private void OpenAppSettings()
+    {
+        var window = new AppSettingsWindow
+        {
+            Owner = Application.Current.MainWindow
+        };
+        if (window.ShowDialog() == true)
+        {
+            _appSettings = window.Settings;
+            RefreshOrders();
+            StatusMessage = "Beállítások mentve.";
+        }
+        else
+        {
+            _appSettings = _appSettingsStore.Load();
+        }
+    }
+
+    [RelayCommand]
+    private void RefreshOrders()
+    {
+        _allOrders.Clear();
+        _allOrders.AddRange(_orderRepo.LoadAll(_appSettings.OrdersSourceFolder));
+        ApplyOrderFilter();
+        StatusMessage = $"Megrendelések: {_allOrders.Count} (forrás: {_appSettings.OrdersSourceFolder})";
+    }
+
+    private void ApplyOrderFilter()
+    {
+        var q = (OrderSearch ?? string.Empty).Trim();
+        FilteredOrders.Clear();
+        IEnumerable<OrderRecord> src = _allOrders;
+        if (!string.IsNullOrWhiteSpace(q))
+        {
+            src = src.Where(o =>
+                (o.OrderId?.Contains(q, StringComparison.OrdinalIgnoreCase) ?? false) ||
+                (o.FullName?.Contains(q, StringComparison.OrdinalIgnoreCase) ?? false) ||
+                (o.Phone?.Contains(q, StringComparison.OrdinalIgnoreCase) ?? false) ||
+                (o.Email?.Contains(q, StringComparison.OrdinalIgnoreCase) ?? false) ||
+                (o.Status?.Contains(q, StringComparison.OrdinalIgnoreCase) ?? false));
+        }
+
+        foreach (var o in src)
+            FilteredOrders.Add(o);
+    }
+
+    [RelayCommand]
+    private async Task SyncOrdersFromDriveAsync()
+    {
+        IsBusy = true;
+        try
+        {
+            _appSettings = _appSettingsStore.Load();
+            if (!_appSettings.GoogleDriveConnected)
+            {
+                MessageBox.Show(
+                    "Először csatlakozzon a Google Drive-hoz a ⚙ beállításokban.",
+                    "Drive szinkron",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Information);
+                return;
+            }
+
+            var progress = new Progress<string>(msg => StatusMessage = msg);
+            var count = await _driveSync.SyncOrdersAsync(_appSettings, progress);
+            RefreshOrders();
+            StatusMessage = $"Drive szinkron kész ({count} fájl).";
+        }
+        catch (Exception ex)
+        {
+            StatusMessage = $"Drive hiba: {ex.Message}";
+            MessageBox.Show(ex.Message, "Drive szinkron hiba", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+        finally
+        {
+            IsBusy = false;
+        }
+    }
+
+    [RelayCommand]
+    private void SaveSelectedOrder()
+    {
+        if (SelectedOrder is null)
+        {
+            StatusMessage = "Nincs kijelölt megrendelés.";
+            return;
+        }
+
+        try
+        {
+            _orderRepo.Save(SelectedOrder);
+            StatusMessage = $"Mentve: {SelectedOrder.OrderId}";
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show(ex.Message, "Mentés hiba", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+    }
+
+    [RelayCommand]
+    private async Task OpenSelectedOrderAsync()
+    {
+        if (SelectedOrder is null)
+        {
+            StatusMessage = "Nincs kijelölt megrendelés.";
+            return;
+        }
+
+        IsBusy = true;
+        try
+        {
+            Project = new CalendarProject();
+            _orderLoader.ApplyOrderToProject(Project, SelectedOrder);
+            ActiveOrderId = SelectedOrder.OrderId;
+            SelectedOrientation = Project.Paper.Orientation;
+            SelectedMonth = 1;
+            RefreshTemplates();
+            SyncThemeEditor();
+            RefreshEvents();
+            RefreshPhotos();
+            await RefreshPreviewAsync();
+            ScheduleAutoSave();
+            CurrentPage = NavPage.Photos;
+            StatusMessage = $"Megrendelés megnyitva: {SelectedOrder.OrderId}";
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show(ex.Message, "Megnyitás hiba", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+        finally
+        {
+            IsBusy = false;
+        }
     }
 
     [RelayCommand]
@@ -702,6 +858,8 @@ public partial class MainViewModel : ObservableObject
     private async Task NewProjectAsync()
     {
         Project = new CalendarProject();
+        ActiveOrderId = "—";
+        SelectedOrder = null;
         SelectedMonth = 1;
         SelectedOrientation = PageOrientation.Portrait;
         RefreshTemplates();
@@ -715,13 +873,21 @@ public partial class MainViewModel : ObservableObject
     [RelayCommand]
     private async Task ExportPdfAsync()
     {
-        var dialog = new SaveFileDialog
+        _appSettings = _appSettingsStore.Load();
+        if (string.IsNullOrWhiteSpace(_appSettings.PdfOutputFolder))
         {
-            Title = "PDF mentése",
-            Filter = "PDF|*.pdf",
-            FileName = $"Naptar_{Project.Year}.pdf"
-        };
-        if (dialog.ShowDialog() != true) return;
+            MessageBox.Show(
+                "Állítsa be a PDF kimeneti mappát a ⚙ beállításokban.",
+                "Export",
+                MessageBoxButton.OK,
+                MessageBoxImage.Information);
+            return;
+        }
+
+        Directory.CreateDirectory(_appSettings.PdfOutputFolder);
+        var orderId = ActiveOrderId is null || ActiveOrderId == "—"
+            ? $"Naptar_{Project.Year}"
+            : ActiveOrderId;
 
         IsBusy = true;
         ExportProgress = 0;
@@ -738,8 +904,12 @@ public partial class MainViewModel : ObservableObject
                     {
                         var nums = fraction.TrimEnd('…', '.').Split('/');
                         if (nums.Length == 2 && int.TryParse(nums[0], out var a) && int.TryParse(nums[1], out var b) && b > 0)
-                            ExportProgress = a * 100.0 / b;
+                            ExportProgress = a * 50.0 / b;
                     }
+                }
+                else if (msg.Contains("vízjel", StringComparison.OrdinalIgnoreCase))
+                {
+                    ExportProgress = 55;
                 }
                 else if (msg.Contains("Kész"))
                 {
@@ -747,10 +917,18 @@ public partial class MainViewModel : ObservableObject
                 }
             });
 
-            await _pdfExport.ExportAsync(Project, dialog.FileName, progress);
-            StatusMessage = $"PDF elkészült: {dialog.FileName}";
-            MessageBox.Show($"A naptár PDF sikeresen elkészült.\n\n{dialog.FileName}", "Export",
-                MessageBoxButton.OK, MessageBoxImage.Information);
+            var (clean, watermarked) = await _pdfExport.ExportOrderPairAsync(
+                Project,
+                _appSettings.PdfOutputFolder,
+                orderId,
+                progress);
+
+            StatusMessage = $"PDF páros kész: {Path.GetFileName(clean)} + {Path.GetFileName(watermarked)}";
+            MessageBox.Show(
+                $"Két PDF elkészült:\n\n{clean}\n\n{watermarked}",
+                "Export",
+                MessageBoxButton.OK,
+                MessageBoxImage.Information);
         }
         catch (Exception ex)
         {

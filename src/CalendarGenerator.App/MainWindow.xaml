@@ -27,20 +27,40 @@
         <Border Grid.Column="0" Background="{StaticResource SidebarBg}">
             <DockPanel>
                 <StackPanel DockPanel.Dock="Top" Margin="20,28,20,24">
-                    <TextBlock Text="KATOLIKUS"
-                               FontFamily="Georgia"
-                               FontSize="12"
-                               Foreground="#B8C4B8" />
-                    <TextBlock Text="Naptárkészítő"
-                               FontFamily="Georgia"
-                               FontSize="22"
-                               Foreground="White"
-                               Margin="0,4,0,0" />
+                    <DockPanel>
+                        <Button DockPanel.Dock="Right"
+                                Content="⚙"
+                                ToolTip="Alkalmazás beállítások"
+                                Width="36" Height="32"
+                                FontSize="16"
+                                Background="#2A3530"
+                                Foreground="White"
+                                BorderBrush="#3D4A43"
+                                BorderThickness="1"
+                                Cursor="Hand"
+                                Command="{Binding OpenAppSettingsCommand}" />
+                        <StackPanel>
+                            <TextBlock Text="KATOLIKUS"
+                                       FontFamily="Georgia"
+                                       FontSize="12"
+                                       Foreground="#B8C4B8" />
+                            <TextBlock Text="Naptárkészítő"
+                                       FontFamily="Georgia"
+                                       FontSize="22"
+                                       Foreground="White"
+                                       Margin="0,4,0,0" />
+                        </StackPanel>
+                    </DockPanel>
                     <TextBlock Text="{Binding Project.Year, StringFormat={}{0}}"
                                FontFamily="Georgia"
                                FontSize="14"
                                Foreground="#C9B29A"
                                Margin="0,8,0,0" />
+                    <TextBlock Text="{Binding ActiveOrderId, StringFormat=Aktív: {0}}"
+                               FontSize="11"
+                               Foreground="#9AA89A"
+                               TextWrapping="Wrap"
+                               Margin="0,4,0,0" />
                 </StackPanel>
 
                 <StackPanel DockPanel.Dock="Bottom" Margin="12,0,12,20">
@@ -56,10 +76,10 @@
                 </StackPanel>
 
                 <StackPanel>
-                    <Button Content="1  Naptár beállítások"
+                    <Button Content="1  Megrendelések"
                             Style="{StaticResource NavButton}"
                             Command="{Binding NavigateCommand}"
-                            CommandParameter="Settings" />
+                            CommandParameter="Admin" />
                     <Button Content="2  Fényképek"
                             Style="{StaticResource NavButton}"
                             Command="{Binding NavigateCommand}"
@@ -91,58 +111,132 @@
             </Grid.RowDefinitions>
 
             <Grid>
-                <!-- SETTINGS -->
-                <Border Visibility="{Binding IsSettings, Converter={StaticResource BoolToVis}}"
+                <!-- ADMIN / ORDERS -->
+                <Border Visibility="{Binding IsAdmin, Converter={StaticResource BoolToVis}}"
                         Background="{StaticResource CardBg}"
                         CornerRadius="8"
-                        Padding="28">
-                    <StackPanel MaxWidth="560" HorizontalAlignment="Left">
-                        <TextBlock Text="Naptár beállítások"
-                                   FontFamily="Georgia" FontSize="28" Foreground="{StaticResource TextPrimary}" />
-                        <TextBlock Text="Válassza ki az évet, a nyelvet és a papírméretet."
-                                   Foreground="{StaticResource TextMuted}" Margin="0,6,0,24" />
+                        Padding="20">
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="*" />
+                            <RowDefinition Height="Auto" />
+                        </Grid.RowDefinitions>
 
-                        <TextBlock Text="Projekt neve" FontWeight="SemiBold" Margin="0,0,0,6" />
-                        <TextBox Text="{Binding Project.Name, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,0,16" />
+                        <DockPanel Margin="0,0,0,12">
+                            <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
+                                <Button Content="Drive szinkron"
+                                        Style="{StaticResource SecondaryButton}"
+                                        Command="{Binding SyncOrdersFromDriveCommand}"
+                                        Margin="0,0,8,0" />
+                                <Button Content="Frissítés"
+                                        Style="{StaticResource SecondaryButton}"
+                                        Command="{Binding RefreshOrdersCommand}" />
+                            </StackPanel>
+                            <StackPanel>
+                                <TextBlock Text="Megrendelések"
+                                           FontFamily="Georgia" FontSize="28" Foreground="{StaticResource TextPrimary}" />
+                                <TextBlock Text="Helyi forrásmappa + Google Drive szinkron. Válasszon megrendelést a szerkesztéshez."
+                                           Foreground="{StaticResource TextMuted}" Margin="0,4,0,0" TextWrapping="Wrap" />
+                            </StackPanel>
+                        </DockPanel>
 
-                        <TextBlock Text="Év" FontWeight="SemiBold" Margin="0,0,0,6" />
-                        <ComboBox ItemsSource="{Binding Years}"
-                                  SelectedItem="{Binding Project.Year}"
-                                  Width="140" HorizontalAlignment="Left"
-                                  Margin="0,0,0,16" />
+                        <Grid Grid.Row="1">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="1.1*" />
+                                <ColumnDefinition Width="16" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
 
-                        <TextBlock Text="Névnap forrás" FontWeight="SemiBold" Margin="0,0,0,6" />
-                        <ComboBox ItemsSource="{Binding NameDaySources}"
-                                  DisplayMemberPath="DisplayName"
-                                  SelectedValuePath="SourceId"
-                                  SelectedValue="{Binding Project.NameDaySourceId}"
-                                  Margin="0,0,0,16" />
+                            <Border BorderBrush="#E0D5C6" BorderThickness="1" CornerRadius="6" Padding="8">
+                                <DockPanel>
+                                    <TextBox DockPanel.Dock="Top"
+                                             Margin="0,0,0,8"
+                                             Text="{Binding OrderSearch, UpdateSourceTrigger=PropertyChanged}"
+                                             Tag="Keresés…" />
+                                    <ListBox ItemsSource="{Binding FilteredOrders}"
+                                             SelectedItem="{Binding SelectedOrder}"
+                                             BorderThickness="0"
+                                             Background="Transparent">
+                                        <ListBox.ItemTemplate>
+                                            <DataTemplate>
+                                                <StackPanel Margin="0,4">
+                                                    <TextBlock Text="{Binding OrderId}" FontWeight="SemiBold" />
+                                                    <TextBlock Text="{Binding FullName}" FontSize="12" Foreground="#6B6258" />
+                                                    <TextBlock FontSize="11" Foreground="#8A8074">
+                                                        <Run Text="{Binding Status, Mode=OneWay}" />
+                                                        <Run Text=" · " />
+                                                        <Run Text="{Binding CalendarYear, Mode=OneWay}" />
+                                                    </TextBlock>
+                                                </StackPanel>
+                                            </DataTemplate>
+                                        </ListBox.ItemTemplate>
+                                    </ListBox>
+                                </DockPanel>
+                            </Border>
 
-                        <TextBlock Text="Nyelv" FontWeight="SemiBold" Margin="0,0,0,6" />
-                        <TextBox Text="{Binding Project.Language, UpdateSourceTrigger=PropertyChanged}"
-                                 Width="120" HorizontalAlignment="Left" IsReadOnly="True" Margin="0,0,0,4" />
-                        <TextBlock Text="Jelenleg: magyar (hu)" FontSize="11"
-                                   Foreground="{StaticResource TextMuted}" Margin="0,0,0,16" />
+                            <ScrollViewer Grid.Column="2" VerticalScrollBarVisibility="Auto">
+                                <StackPanel>
+                                    <TextBlock Text="Megrendelés adatai" FontFamily="Georgia" FontSize="20" Margin="0,0,0,12" />
+                                    <TextBlock Text="Order ID" FontWeight="SemiBold" Margin="0,0,0,4" />
+                                    <TextBox Text="{Binding SelectedOrder.OrderId, UpdateSourceTrigger=PropertyChanged}" IsReadOnly="True" Margin="0,0,0,10" />
+                                    <TextBlock Text="Név" FontWeight="SemiBold" Margin="0,0,0,4" />
+                                    <TextBox Text="{Binding SelectedOrder.FullName, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,0,10" />
+                                    <TextBlock Text="Telefon" FontWeight="SemiBold" Margin="0,0,0,4" />
+                                    <TextBox Text="{Binding SelectedOrder.Phone, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,0,10" />
+                                    <TextBlock Text="E-mail" FontWeight="SemiBold" Margin="0,0,0,4" />
+                                    <TextBox Text="{Binding SelectedOrder.Email, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,0,10" />
+                                    <TextBlock Text="Év" FontWeight="SemiBold" Margin="0,0,0,4" />
+                                    <TextBox Text="{Binding SelectedOrder.CalendarYear, UpdateSourceTrigger=PropertyChanged}" Width="120" HorizontalAlignment="Left" Margin="0,0,0,10" />
+                                    <TextBlock Text="Formátum" FontWeight="SemiBold" Margin="0,0,0,4" />
+                                    <ComboBox SelectedValue="{Binding SelectedOrder.CalendarFormatPref}"
+                                              SelectedValuePath="Tag"
+                                              Margin="0,0,0,10" Width="220" HorizontalAlignment="Left">
+                                        <ComboBoxItem Content="Álló (portrait)" Tag="portrait" />
+                                        <ComboBoxItem Content="Fekvő (landscape)" Tag="landscape" />
+                                    </ComboBox>
+                                    <TextBlock Text="Státusz" FontWeight="SemiBold" Margin="0,0,0,4" />
+                                    <ComboBox ItemsSource="{Binding OrderStatuses}"
+                                              SelectedItem="{Binding SelectedOrder.Status}"
+                                              Margin="0,0,0,10" Width="220" HorizontalAlignment="Left" />
+                                    <TextBlock Text="Megjegyzés" FontWeight="SemiBold" Margin="0,0,0,4" />
+                                    <TextBox Text="{Binding SelectedOrder.Comments, UpdateSourceTrigger=PropertyChanged}"
+                                             AcceptsReturn="True" Height="70" TextWrapping="Wrap"
+                                             VerticalScrollBarVisibility="Auto" Margin="0,0,0,12" />
 
-                        <TextBlock Text="Orientáció" FontWeight="SemiBold" Margin="0,0,0,6" />
-                        <StackPanel Orientation="Horizontal" Margin="0,0,0,16">
-                            <RadioButton x:Name="PortraitRadio"
-                                         Content="Álló (A4)"
-                                         GroupName="Orientation"
-                                         IsChecked="True"
-                                         Margin="0,0,16,0"
-                                         Checked="Portrait_Checked" />
-                            <RadioButton x:Name="LandscapeRadio"
-                                         Content="Fekvő (A4)"
-                                         GroupName="Orientation"
-                                         Checked="Landscape_Checked" />
-                        </StackPanel>
+                                    <StackPanel Orientation="Horizontal">
+                                        <Button Content="Mentés" Style="{StaticResource SecondaryButton}"
+                                                Command="{Binding SaveSelectedOrderCommand}" Margin="0,0,8,0" />
+                                        <Button Content="Megnyitás naptárhoz" Style="{StaticResource PrimaryButton}"
+                                                Command="{Binding OpenSelectedOrderCommand}" />
+                                    </StackPanel>
 
-                        <Button Content="Naptár generálása"
-                                Style="{StaticResource PrimaryButton}"
-                                HorizontalAlignment="Left"
-                                Command="{Binding ApplyYearCommand}" />
-                    </StackPanel>
+                                    <Border Background="#F3EEE6" CornerRadius="6" Padding="12" Margin="0,20,0,0">
+                                        <StackPanel>
+                                            <TextBlock Text="Aktív naptárprojekt" FontWeight="SemiBold" Margin="0,0,0,8" />
+                                            <TextBlock Text="Orientáció" FontWeight="SemiBold" Margin="0,0,0,6" />
+                                            <StackPanel Orientation="Horizontal" Margin="0,0,0,12">
+                                                <RadioButton x:Name="PortraitRadio"
+                                                             Content="Álló (A4)"
+                                                             GroupName="Orientation"
+                                                             IsChecked="True"
+                                                             Margin="0,0,16,0"
+                                                             Checked="Portrait_Checked" />
+                                                <RadioButton x:Name="LandscapeRadio"
+                                                             Content="Fekvő (A4)"
+                                                             GroupName="Orientation"
+                                                             Checked="Landscape_Checked" />
+                                            </StackPanel>
+                                            <Button Content="Naptár újragenerálása"
+                                                    Style="{StaticResource SecondaryButton}"
+                                                    HorizontalAlignment="Left"
+                                                    Command="{Binding ApplyYearCommand}" />
+                                        </StackPanel>
+                                    </Border>
+                                </StackPanel>
+                            </ScrollViewer>
+                        </Grid>
+                    </Grid>
                 </Border>
 
                 <!-- PHOTOS: list + crop editor -->
@@ -523,21 +617,22 @@
                         Background="{StaticResource CardBg}" CornerRadius="8" Padding="28">
                     <StackPanel MaxWidth="640" HorizontalAlignment="Left">
                         <TextBlock Text="PDF export" FontFamily="Georgia" FontSize="28" />
-                        <TextBlock Text="12 oldalas, nyomdakész PDF (300 DPI). A4 álló vagy fekvő."
+                        <TextBlock Text="Két PDF készül a kimeneti mappába: tiszta (rendelésszám.pdf) és vízjeles (rendelésszám_watermarked.pdf) ZATAI PIXEL logóval."
                                    Foreground="{StaticResource TextMuted}" Margin="0,6,0,20" TextWrapping="Wrap" />
 
                         <Border Background="#F3EEE6" CornerRadius="6" Padding="16" Margin="0,0,0,20">
                             <StackPanel>
-                                <TextBlock Text="{Binding Project.Year, StringFormat=Év: {0}}" FontWeight="SemiBold" />
+                                <TextBlock Text="{Binding ActiveOrderId, StringFormat=Rendelés: {0}}" FontWeight="SemiBold" />
+                                <TextBlock Text="{Binding Project.Year, StringFormat=Év: {0}}" Margin="0,4,0,0" />
                                 <TextBlock Text="{Binding SelectedOrientation, StringFormat=Orientáció: {0}}" Margin="0,4,0,0" />
                                 <TextBlock Text="{Binding Project.Events.Count, StringFormat=Események: {0}}" Margin="0,4,0,0" />
-                                <TextBlock Text="Oldalak: 12" Margin="0,4,0,0" />
+                                <TextBlock Text="Oldalak: 12 · 300 DPI" Margin="0,4,0,0" />
                             </StackPanel>
                         </Border>
 
                         <ProgressBar Height="10" Minimum="0" Maximum="100"
                                      Value="{Binding ExportProgress}" Margin="0,0,0,12" />
-                        <Button Content="PDF létrehozása…"
+                        <Button Content="PDF páros export (tiszta + vízjel)…"
                                 Style="{StaticResource PrimaryButton}"
                                 HorizontalAlignment="Left"
                                 Command="{Binding ExportPdfCommand}"

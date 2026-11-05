@@ -2,7 +2,7 @@ namespace CalendarGenerator.App.ViewModels;
 
 public enum NavPage
 {
-    Settings,
+    Admin,
     Photos,
     Events,
     Templates,
