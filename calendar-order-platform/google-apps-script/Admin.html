@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <base target="_top" />
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <style>
+      :root {
+        --bg: #0f1115;
+        --card: #171a21;
+        --line: #2a3140;
+        --text: #e8ecf4;
+        --muted: #9aa3b5;
+        --accent: #c47a3a;
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        font-family: system-ui, -apple-system, Segoe UI, sans-serif;
+        background: radial-gradient(1200px 600px at 10% -10%, #2a1c14, var(--bg));
+        color: var(--text);
+        min-height: 100vh;
+      }
+      main { max-width: 1100px; margin: 0 auto; padding: 24px 16px 48px; }
+      h1 { margin: 0 0 8px; font-size: 1.75rem; }
+      .sub { color: var(--muted); margin-bottom: 20px; }
+      .card {
+        background: var(--card);
+        border: 1px solid var(--line);
+        border-radius: 16px;
+        padding: 16px;
+        margin-bottom: 16px;
+      }
+      label { display: block; margin: 0 0 6px; color: var(--muted); font-size: 0.85rem; }
+      input, select, button {
+        font: inherit;
+        border-radius: 10px;
+        border: 1px solid var(--line);
+        background: #0d1017;
+        color: var(--text);
+        padding: 10px 12px;
+      }
+      button {
+        background: var(--accent);
+        border: 0;
+        color: #fff;
+        cursor: pointer;
+        font-weight: 600;
+      }
+      button:disabled { opacity: 0.6; cursor: wait; }
+      button.secondary { background: transparent; border: 1px solid var(--line); color: var(--text); }
+      .row { display: flex; flex-wrap: wrap; gap: 10px; align-items: end; }
+      .row > div { flex: 1 1 160px; }
+      .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 10px; }
+      .stat {
+        background: #12151c;
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        padding: 12px;
+      }
+      .stat b { display: block; font-size: 1.4rem; }
+      .stat span { color: var(--muted); font-size: 0.8rem; }
+      table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
+      th, td { text-align: left; padding: 10px 8px; border-bottom: 1px solid var(--line); vertical-align: top; }
+      th { color: var(--muted); font-weight: 600; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.04em; }
+      a { color: #f0b27a; }
+      .error {
+        display: none;
+        background: #3f1d1d;
+        border: 1px solid #7f1d1d;
+        color: #fecaca;
+        padding: 10px 12px;
+        border-radius: 10px;
+        margin-bottom: 12px;
+      }
+      .hidden { display: none !important; }
+      .links { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 8px; }
+      .links a { text-decoration: none; }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>Admin – Naptár rendelések</h1>
+      <p class="sub">Spreadsheet: <strong>Orders</strong> · Drive: <strong>Naptar</strong></p>
+      <div class="error" id="error"></div>
+
+      <section class="card" id="loginCard">
+        <label for="password">Admin jelszó (Config.gs → ADMIN_PASSWORD)</label>
+        <div class="row">
+          <div>
+            <input id="password" type="password" placeholder="Admin jelszó" autocomplete="current-password" />
+          </div>
+          <button type="button" id="loginBtn">Belépés</button>
+        </div>
+      </section>
+
+      <section id="dash" class="hidden">
+        <div class="card">
+          <div class="stats" id="stats"></div>
+          <div class="links" id="quickLinks"></div>
+        </div>
+
+        <div class="card">
+          <div class="row">
+            <div>
+              <label>Keresés</label>
+              <input id="search" placeholder="Név / telefon / ORD-…" />
+            </div>
+            <div>
+              <label>Év</label>
+              <select id="year">
+                <option value="">Mind</option>
+                <option>2026</option>
+                <option>2027</option>
+                <option>2028</option>
+                <option>2029</option>
+              </select>
+            </div>
+            <div>
+              <label>Státusz</label>
+              <select id="status">
+                <option value="">Mind</option>
+                <option value="NEW">NEW</option>
+                <option value="IN_PROGRESS">IN_PROGRESS</option>
+                <option value="WAITING_FOR_CUSTOMER">WAITING_FOR_CUSTOMER</option>
+                <option value="COMPLETED">COMPLETED</option>
+                <option value="CANCELLED">CANCELLED</option>
+              </select>
+            </div>
+            <button type="button" id="refreshBtn" class="secondary">Frissítés</button>
+            <button type="button" id="logoutBtn" class="secondary">Kilépés</button>
+          </div>
+        </div>
+
+        <div class="card" style="overflow-x:auto">
+          <table>
+            <thead>
+              <tr>
+                <th>Order ID</th>
+                <th>Név</th>
+                <th>Telefon</th>
+                <th>Év</th>
+                <th>Fotó / esemény</th>
+                <th>Státusz</th>
+                <th>Drive</th>
+              </tr>
+            </thead>
+            <tbody id="tbody"></tbody>
+          </table>
+        </div>
+      </section>
+    </main>
+
+    <script>
+      var password = '';
+      var STATUSES = ['NEW', 'IN_PROGRESS', 'WAITING_FOR_CUSTOMER', 'COMPLETED', 'CANCELLED'];
+
+      function $(id) { return document.getElementById(id); }
+
+      function showError(msg) {
+        var el = $('error');
+        if (!msg) { el.style.display = 'none'; el.textContent = ''; return; }
+        el.style.display = 'block';
+        el.textContent = msg;
+      }
+
+      /**
+       * IMPORTANT: call server functions with runner as `this`.
+       * `.apply(null, args)` breaks google.script.run and sends no request.
+       */
+      function run(name, args, ok) {
+        showError('');
+        if (typeof google === 'undefined' || !google.script || !google.script.run) {
+          showError('google.script.run nem elérhető. Nyissa meg a telepített webalkalmazás URL-jét (?page=admin).');
+          return;
+        }
+        var runner = google.script.run
+          .withSuccessHandler(function (res) {
+            var btn = $('loginBtn');
+            if (btn) { btn.disabled = false; btn.textContent = 'Belépés'; }
+            ok(res);
+          })
+          .withFailureHandler(function (err) {
+            var btn = $('loginBtn');
+            if (btn) { btn.disabled = false; btn.textContent = 'Belépés'; }
+            showError(err && err.message ? err.message : String(err));
+          });
+        if (typeof runner[name] !== 'function') {
+          showError('Hiányzó szerverfüggvény: ' + name + '. Másolja be az új Code.gs-t és telepítsen új verziót.');
+          return;
+        }
+        runner[name].apply(runner, args || []);
+      }
+
+      function login() {
+        var pw = ($('password').value || '').trim();
+        if (!pw) {
+          showError('Adja meg az admin jelszót (Config.gs → ADMIN_PASSWORD).');
+          return;
+        }
+        var btn = $('loginBtn');
+        if (btn) { btn.disabled = true; btn.textContent = 'Belépés…'; }
+        run('adminLogin', [pw], function (res) {
+          password = pw;
+          $('loginCard').classList.add('hidden');
+          $('dash').classList.remove('hidden');
+          var customerUrl = String(location.href).replace('page=admin', 'page=customer');
+          if (customerUrl.indexOf('page=') === -1) {
+            customerUrl += (customerUrl.indexOf('?') >= 0 ? '&' : '?') + 'page=customer';
+          }
+          $('quickLinks').innerHTML =
+            '<a href="' + esc(res.spreadsheetUrl) + '" target="_blank">Orders táblázat megnyitása</a>' +
+            '<a href="' + esc(res.driveRootUrl) + '" target="_blank">Naptar Drive mappa</a>' +
+            '<a href="' + esc(customerUrl) + '">Vásárlói rendelési oldal</a>';
+          loadOrders();
+        });
+      }
+
+      function filters() {
+        return {
+          search: ($('search').value || '').trim(),
+          year: $('year').value,
+          status: $('status').value
+        };
+      }
+
+      function loadOrders() {
+        run('adminListOrders', [password, filters()], function (res) {
+          var c = res.counts || {};
+          $('stats').innerHTML =
+            stat('Összes', res.total) +
+            stat('Új', c.NEW || 0) +
+            stat('Folyamatban', c.IN_PROGRESS || 0) +
+            stat('Várakozik', c.WAITING_FOR_CUSTOMER || 0) +
+            stat('Kész', c.COMPLETED || 0) +
+            stat('Törölve', c.CANCELLED || 0);
+
+          var html = '';
+          (res.orders || []).forEach(function (o) {
+            html += '<tr>' +
+              '<td><strong>' + esc(o.orderId) + '</strong><div style="color:#9aa3b5;font-size:12px">' + esc(o.createdAt) + '</div></td>' +
+              '<td>' + esc(o.fullName) + '</td>' +
+              '<td>' + esc(o.phone) + '</td>' +
+              '<td>' + esc(o.calendarYear) + '</td>' +
+              '<td>' + esc(o.photoCount) + ' / ' + esc(o.eventCount) + '</td>' +
+              '<td><select data-id="' + esc(o.orderId) + '">' +
+              STATUSES.map(function (s) {
+                return '<option value="' + s + '"' + (o.status === s ? ' selected' : '') + '>' + s + '</option>';
+              }).join('') +
+              '</select></td>' +
+              '<td>' + (o.driveFolderUrl
+                ? '<a href="' + esc(o.driveFolderUrl) + '" target="_blank">Mappa</a>'
+                : '—') + '</td>' +
+              '</tr>';
+          });
+          $('tbody').innerHTML = html || '<tr><td colspan="7">Nincs megrendelés.</td></tr>';
+
+          var selects = $('tbody').querySelectorAll('select[data-id]');
+          for (var i = 0; i < selects.length; i++) {
+            selects[i].onchange = function () {
+              run('adminSetStatus', [password, this.getAttribute('data-id'), this.value], loadOrders);
+            };
+          }
+        });
+      }
+
+      function stat(label, value) {
+        return '<div class="stat"><b>' + esc(value) + '</b><span>' + esc(label) + '</span></div>';
+      }
+
+      function esc(s) {
+        return String(s == null ? '' : s)
+          .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+      }
+
+      function bindUi() {
+        var loginBtn = $('loginBtn');
+        var passwordInput = $('password');
+        if (loginBtn) loginBtn.onclick = function (e) {
+          e.preventDefault();
+          login();
+        };
+        if (passwordInput) passwordInput.onkeydown = function (e) {
+          if (e.key === 'Enter' || e.keyCode === 13) {
+            e.preventDefault();
+            login();
+          }
+        };
+        var refreshBtn = $('refreshBtn');
+        if (refreshBtn) refreshBtn.onclick = loadOrders;
+        var search = $('search');
+        if (search) search.oninput = loadOrders;
+        var year = $('year');
+        if (year) year.onchange = loadOrders;
+        var status = $('status');
+        if (status) status.onchange = loadOrders;
+        var logoutBtn = $('logoutBtn');
+        if (logoutBtn) logoutBtn.onclick = function () {
+          password = '';
+          $('dash').classList.add('hidden');
+          $('loginCard').classList.remove('hidden');
+          $('password').value = '';
+        };
+      }
+
+      bindUi();
+    </script>
+  </body>
+</html>

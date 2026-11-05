@@ -23,3 +23,13 @@ Desktop.ini
 **/imports/
 *.pdf
 !docs/**/*.pdf
+
+## Calendar Order Platform (Node)
+calendar-order-platform/**/node_modules/
+calendar-order-platform/**/dist/
+calendar-order-platform/backend/prisma/*.db
+calendar-order-platform/backend/prisma/*.db-journal
+calendar-order-platform/storage/orders/**
+!calendar-order-platform/storage/orders/.gitkeep
+calendar-order-platform/**/.env
+calendar-order-platform/**/coverage/

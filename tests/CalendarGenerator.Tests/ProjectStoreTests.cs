@@ -18,7 +18,8 @@ public class ProjectStoreTests
         };
         project.Events.Add(new CustomEvent
         {
-            Date = new DateOnly(2027, 5, 15),
+            Month = 5,
+            Day = 15,
             Description = "Boti születésnapja"
         });
         project.GetMonth(3).TemplateId = "marble";

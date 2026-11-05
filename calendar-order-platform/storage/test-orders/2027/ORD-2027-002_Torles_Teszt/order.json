@@ -1,0 +1,15 @@
+{
+  "publicOrderId": "ORD-2027-002",
+  "fullName": "Torles Teszt",
+  "phone": "+40739998877",
+  "email": null,
+  "calendarYear": 2027,
+  "calendarLanguage": "hu",
+  "calendarFormatPref": null,
+  "comments": null,
+  "status": "NEW",
+  "createdAt": "2026-11-05T09:14:17.935Z",
+  "updatedAt": "2026-11-05T09:14:17.935Z",
+  "photos": [],
+  "events": []
+}

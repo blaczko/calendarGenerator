@@ -63,12 +63,15 @@ public class CollageEngineTests
             new() { AspectRatio = 1.2 }
         };
 
-        var layout = _engine.Build(photos);
+        // Normalized width/height encode pixel aspect against a square container (aspect=1).
+        const double containerAspect = 1.0;
+        var layout = _engine.Build(photos, containerAspect);
         foreach (var slot in layout.Slots)
         {
             var photo = photos.Single(p => p.Id == slot.PhotoId);
             var slotAspect = slot.Bounds.Width / slot.Bounds.Height;
-            Assert.InRange(slotAspect, photo.AspectRatio * 0.98, photo.AspectRatio * 1.02);
+            var expectedNorm = photo.AspectRatio / containerAspect;
+            Assert.InRange(slotAspect, expectedNorm * 0.98, expectedNorm * 1.02);
         }
     }
 

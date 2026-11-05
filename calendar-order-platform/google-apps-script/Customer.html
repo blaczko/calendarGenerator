@@ -1,0 +1,992 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <base target="_top" />
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <style>
+      :root {
+        --ink: #2a241c;
+        --muted: #6b6258;
+        --line: #e4d8c8;
+        --accent: #b4532a;
+        --card: #fffaf4;
+        --bg: #f7f1e8;
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        font-family: Georgia, "Times New Roman", serif;
+        background: linear-gradient(160deg, #f7f1e8, #efe4d6 40%, #f8f3eb);
+        color: var(--ink);
+      }
+      main { max-width: 760px; margin: 0 auto; padding: 20px 16px 48px; }
+      .hero {
+        background: linear-gradient(120deg, #3d2a1f, #8a3c1c 45%, #c47a3a);
+        color: #fff8f1;
+        border-radius: 24px 24px 0 0;
+        padding: 28px 24px;
+      }
+      .hero h1 { margin: 0; font-size: clamp(1.5rem, 4vw, 2rem); line-height: 1.2; }
+      .hero p { margin: 10px 0 0; opacity: 0.9; }
+      .panel {
+        background: var(--card);
+        border: 1px solid var(--line);
+        border-top: 0;
+        border-radius: 0 0 24px 24px;
+        padding: 20px;
+        box-shadow: 0 18px 50px rgba(80, 50, 20, 0.08);
+      }
+      .steps { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 20px; }
+      .steps button {
+        border: 0;
+        border-radius: 999px;
+        padding: 8px 12px;
+        background: transparent;
+        color: var(--muted);
+        cursor: pointer;
+        font: inherit;
+        font-size: 0.85rem;
+      }
+      .steps button.active { background: var(--accent); color: #fff; }
+      .steps button.done { background: #efe4d6; color: var(--ink); }
+      label { display: block; margin: 12px 0 4px; font-weight: 600; font-size: 0.95rem; }
+      input, select, textarea {
+        width: 100%;
+        padding: 10px 12px;
+        border-radius: 12px;
+        border: 1px solid var(--line);
+        font: inherit;
+        background: #fff;
+      }
+      input[type="checkbox"] {
+        width: auto;
+        height: auto;
+        padding: 0;
+        margin: 3px 0 0;
+        border-radius: 4px;
+        flex: 0 0 auto;
+        accent-color: var(--accent);
+      }
+      .consent {
+        display: flex;
+        align-items: flex-start;
+        gap: 10px;
+        margin-top: 16px;
+        padding: 14px 16px;
+        border: 1px solid var(--line);
+        border-radius: 14px;
+        background: #fff;
+        font-weight: 600;
+        line-height: 1.35;
+        cursor: pointer;
+      }
+      .consent-text { flex: 1; }
+      .consent-note {
+        margin: 8px 0 0;
+        font-weight: 400;
+        color: var(--muted);
+        font-size: 0.85rem;
+      }
+      .hint { color: var(--muted); font-size: 0.8rem; margin-top: 4px; }
+      .row { display: grid; gap: 12px; }
+      @media (min-width: 640px) { .row.two { grid-template-columns: 1fr 1fr; } }
+      .nav { display: flex; justify-content: space-between; gap: 12px; margin-top: 24px; }
+      .btn {
+        border: 0;
+        border-radius: 999px;
+        padding: 12px 18px;
+        font: inherit;
+        cursor: pointer;
+      }
+      .btn-primary { background: var(--accent); color: #fff; }
+      .btn-secondary { background: #fff; border: 1px solid var(--line); }
+      .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+      .error {
+        background: #fef2f2;
+        border: 1px solid #fecaca;
+        color: #991b1b;
+        padding: 10px 12px;
+        border-radius: 12px;
+        margin-bottom: 12px;
+        display: none;
+      }
+      .month {
+        border: 1px solid var(--line);
+        border-radius: 16px;
+        padding: 12px;
+        margin-bottom: 12px;
+        background: #fff;
+      }
+      .month-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+      .drop {
+        border: 1px dashed rgba(180, 83, 42, 0.45);
+        background: #fff7ef;
+        border-radius: 12px;
+        padding: 16px;
+        text-align: center;
+        color: var(--muted);
+        cursor: pointer;
+      }
+      .thumbs { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 10px; }
+      @media (min-width: 640px) { .thumbs { grid-template-columns: repeat(6, 1fr); } }
+      .thumb {
+        position: relative;
+        border-radius: 10px;
+        overflow: hidden;
+        border: 1px solid var(--line);
+        aspect-ratio: 1;
+        background: #eee;
+      }
+      .thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+      .thumb button {
+        position: absolute; top: 4px; right: 4px;
+        border: 0; border-radius: 999px; background: rgba(0,0,0,.65); color: #fff;
+        width: 24px; height: 24px; cursor: pointer;
+      }
+      .event-row { display: grid; gap: 8px; margin-bottom: 10px; }
+      @media (min-width: 640px) {
+        .event-row { grid-template-columns: 160px 1fr auto; align-items: center; }
+      }
+      .summary div { padding: 8px 0; border-bottom: 1px solid var(--line); }
+      .ok {
+        background: #ecfdf5;
+        border: 1px solid #a7f3d0;
+        color: #065f46;
+        padding: 16px;
+        border-radius: 16px;
+      }
+      .busy { opacity: 0.7; pointer-events: none; }
+      /* Photo uploads must NOT lock the whole form — only mark the active month */
+      .month.uploading {
+        outline: 2px solid rgba(180, 83, 42, 0.35);
+        outline-offset: 2px;
+      }
+      .month.uploading .drop::after {
+        content: ' Feltöltés folyamatban…';
+        display: block;
+        margin-top: 6px;
+        font-size: 0.8rem;
+        color: var(--accent);
+      }
+      #status {
+        display: none;
+        margin: 0 0 12px;
+        padding: 12px 14px;
+        border-radius: 12px;
+        background: #fff7ef;
+        border: 1px solid var(--line);
+        color: var(--muted);
+        font-size: 0.9rem;
+      }
+      .progress-wrap { margin-top: 10px; }
+      .progress-track {
+        height: 12px;
+        border-radius: 999px;
+        background: #e8ddd0;
+        overflow: hidden;
+      }
+      .progress-fill {
+        height: 100%;
+        width: 0%;
+        border-radius: 999px;
+        background: linear-gradient(90deg, #b4532a, #c47a3a);
+        transition: width 0.25s ease;
+      }
+      .progress-meta {
+        display: flex;
+        justify-content: space-between;
+        gap: 8px;
+        margin-top: 6px;
+        font-size: 0.8rem;
+      }
+      .progress-name {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        max-width: 70%;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <div class="hero">
+        <h1>Személyre szabott családi naptár rendelése</h1>
+        <p>Készíts egyedi családi naptárat a kedvenc fényképeiddel és fontos eseményeiddel.</p>
+      </div>
+      <div class="panel" id="app">
+        <div class="steps" id="stepNav"></div>
+        <div class="error" id="error"></div>
+        <div id="status"></div>
+        <div id="view"></div>
+        <div class="nav" id="nav"></div>
+      </div>
+    </main>
+
+    <script>
+      var STEPS = ['Személyes adatok', 'Naptár beállítások', 'Havi fényképek', 'Események', 'Összegzés'];
+      var MONTHS = [
+        'Január','Február','Március','Április','Május','Június',
+        'Július','Augusztus','Szeptember','Október','November','December'
+      ];
+      var state = {
+        step: 0,
+        busy: false,
+        editToken: null,
+        orderId: null,
+        driveFolderUrl: null,
+        maxPhotos: 6,
+        draft: {
+          fullName: '',
+          phone: '',
+          email: '',
+          calendarYear: 2027,
+          calendarLanguage: 'hu',
+          calendarFormatPref: 'portrait',
+          comments: '',
+          privacyConsent: false,
+          events: [],
+          photos: []
+        },
+        done: false,
+        /** photoId -> data:image/... preview URL (from local compression) */
+        previewById: {},
+        orderCreating: false,
+        orderCreateError: null,
+        /** callbacks waiting for editToken */
+        orderWaiters: [],
+        uploadConcurrency: 3,
+        /** month -> { total, done, label } for multi-month parallel uploads */
+        uploadJobs: {},
+        activeUploadMonths: 0
+      };
+
+      function $(id) { return document.getElementById(id); }
+
+      function showError(msg) {
+        var el = $('error');
+        if (!msg) { el.style.display = 'none'; el.textContent = ''; return; }
+        el.style.display = 'block';
+        el.textContent = msg;
+      }
+
+      function setBusy(v) {
+        state.busy = v;
+        $('app').classList.toggle('busy', v);
+        renderNav();
+      }
+
+      function setStatus(msg) {
+        var el = $('status');
+        if (!msg) { el.style.display = 'none'; el.innerHTML = ''; return; }
+        el.style.display = 'block';
+        el.textContent = msg;
+      }
+
+      function showProgress(opts) {
+        var el = $('status');
+        var pct = Math.max(0, Math.min(100, opts.percent || 0));
+        el.style.display = 'block';
+        el.innerHTML =
+          '<div><strong>' + escapeHtml(opts.title || 'Feltöltés') + '</strong></div>' +
+          '<div class="progress-wrap">' +
+          '<div class="progress-track"><div class="progress-fill" style="width:' + pct + '%"></div></div>' +
+          '<div class="progress-meta">' +
+          '<span class="progress-name">' + escapeHtml(opts.detail || '') + '</span>' +
+          '<span>' + escapeHtml(opts.counter || '') + ' · ' + Math.round(pct) + '%</span>' +
+          '</div></div>';
+      }
+
+      function hideProgress() {
+        setStatus('');
+      }
+
+      function run(fnName, args, onOk) {
+        showError('');
+        setBusy(true);
+        var runner = google.script.run
+          .withSuccessHandler(function (res) {
+            setBusy(false);
+            setStatus('');
+            onOk(res);
+          })
+          .withFailureHandler(function (err) {
+            setBusy(false);
+            setStatus('');
+            showError(err && err.message ? err.message : String(err));
+          });
+        // Must call with runner as `this` — apply(null, ...) sends no request.
+        runner[fnName].apply(runner, args);
+      }
+
+      function notifyOrderWaiters(err, token) {
+        var waiters = state.orderWaiters.slice();
+        state.orderWaiters = [];
+        waiters.forEach(function (w) {
+          try { w(err, token); } catch (e) {}
+        });
+      }
+
+      /** Start Drive order create in background (does not block the photo UI). */
+      function startOrderCreationAsync() {
+        if (state.editToken || state.orderCreating) return;
+        state.orderCreating = true;
+        state.orderCreateError = null;
+        setStatus('Megrendelés létrehozása a háttérben… Közben már választhat fényképeket.');
+        google.script.run
+          .withSuccessHandler(function (res) {
+            state.orderCreating = false;
+            state.editToken = res.editToken;
+            state.orderId = res.orderId;
+            state.driveFolderUrl = res.driveFolderUrl;
+            state.draft.photos = (res.order && res.order.photos) || [];
+            setStatus('Megrendelés kész (' + res.orderId + '). Feltöltés folytatódik…');
+            notifyOrderWaiters(null, res.editToken);
+            setTimeout(function () {
+              if (!state.busy) hideProgress();
+            }, 800);
+          })
+          .withFailureHandler(function (err) {
+            state.orderCreating = false;
+            state.orderCreateError = err && err.message ? err.message : String(err);
+            setStatus('');
+            showError('Megrendelés létrehozása sikertelen: ' + state.orderCreateError);
+            notifyOrderWaiters(state.orderCreateError, null);
+          })
+          .createOrder({
+            fullName: state.draft.fullName,
+            phone: state.draft.phone,
+            email: state.draft.email,
+            calendarYear: state.draft.calendarYear,
+            calendarLanguage: state.draft.calendarLanguage,
+            calendarFormatPref: state.draft.calendarFormatPref,
+            comments: state.draft.comments,
+            privacyConsent: false,
+            events: state.draft.events
+          });
+      }
+
+      function whenOrderReady(cb) {
+        if (state.editToken) {
+          cb(null, state.editToken);
+          return;
+        }
+        if (state.orderCreateError) {
+          cb(state.orderCreateError, null);
+          return;
+        }
+        state.orderWaiters.push(cb);
+        if (!state.orderCreating) startOrderCreationAsync();
+      }
+
+      function ensureOrder(cb) {
+        whenOrderReady(function (err, token) {
+          if (err) {
+            showError(err);
+            return;
+          }
+          cb(token);
+        });
+      }
+
+      function canNext() {
+        if (state.step === 0) return !!(state.draft.fullName.trim() && state.draft.phone.trim());
+        if (state.step === 1) return !!(state.draft.calendarYear && state.draft.calendarFormatPref);
+        if (state.step === 4) return !!state.draft.privacyConsent;
+        return true;
+      }
+
+      function goNext() {
+        if (!canNext()) {
+          showError('Kérjük, töltse ki a kötelező mezőket.');
+          return;
+        }
+        // Enter photo step immediately; create order asynchronously in background.
+        if (state.step === 1) {
+          state.step = 2;
+          render();
+          startOrderCreationAsync();
+          return;
+        }
+        if (state.step === 4) {
+          finalize();
+          return;
+        }
+        state.step += 1;
+        render();
+      }
+
+      function goBack() {
+        if (state.step > 0) {
+          state.step -= 1;
+          render();
+        }
+      }
+
+      function finalize() {
+        ensureOrder(function (token) {
+          setStatus('Véglegesítés…');
+          run('finalizeOrder', [token, {
+            fullName: state.draft.fullName,
+            phone: state.draft.phone,
+            email: state.draft.email,
+            calendarYear: state.draft.calendarYear,
+            calendarFormatPref: state.draft.calendarFormatPref,
+            comments: state.draft.comments,
+            events: state.draft.events,
+            privacyConsent: true
+          }], function (res) {
+            state.done = true;
+            state.draft.photos = res.order.photos || [];
+            render();
+          });
+        });
+      }
+
+      function photosForMonth(m) {
+        return (state.draft.photos || []).filter(function (p) { return p.month === m; });
+      }
+
+      /** Resize/compress in the browser so Drive uploads stay small and fast. */
+      function compressFile(file) {
+        return new Promise(function (resolve, reject) {
+          var maxSide = 1600;
+          var quality = 0.82;
+          var url = URL.createObjectURL(file);
+          var img = new Image();
+          img.onload = function () {
+            try {
+              var w = img.width;
+              var h = img.height;
+              if (w > maxSide || h > maxSide) {
+                if (w >= h) {
+                  h = Math.round(h * maxSide / w);
+                  w = maxSide;
+                } else {
+                  w = Math.round(w * maxSide / h);
+                  h = maxSide;
+                }
+              }
+              var canvas = document.createElement('canvas');
+              canvas.width = w;
+              canvas.height = h;
+              canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+              URL.revokeObjectURL(url);
+              var dataUrl = canvas.toDataURL('image/jpeg', quality);
+              resolve({
+                name: String(file.name || 'photo.jpg').replace(/\.\w+$/, '.jpg'),
+                mimeType: 'image/jpeg',
+                dataBase64: String(dataUrl).split(',')[1] || ''
+              });
+            } catch (err) {
+              URL.revokeObjectURL(url);
+              reject(err);
+            }
+          };
+          img.onerror = function () {
+            URL.revokeObjectURL(url);
+            reject(new Error('Kép betöltése sikertelen: ' + file.name));
+          };
+          img.src = url;
+        });
+      }
+
+      function onPickFiles(month, input) {
+        var files = input.files;
+        if (!files || !files.length) return;
+        var remaining = state.maxPhotos - photosForMonth(month).length - pendingCountForMonth(month);
+        if (remaining <= 0) {
+          showError('Ebben a hónapban már ' + state.maxPhotos + ' fénykép van.');
+          input.value = '';
+          return;
+        }
+        var selected = Array.prototype.slice.call(files, 0, remaining);
+        input.value = '';
+        // Compress immediately while order may still be creating; upload when token is ready.
+        prepareAndUpload(month, selected);
+      }
+
+      function pendingCountForMonth(month) {
+        return (state._inflightByMonth && state._inflightByMonth[month]) || 0;
+      }
+
+      function markMonthUploading(month, on) {
+        var blocks = document.querySelectorAll('.month');
+        var block = blocks[month - 1];
+        if (block) block.classList.toggle('uploading', !!on);
+      }
+
+      function refreshUploadProgressUi() {
+        var jobs = state.uploadJobs || {};
+        var keys = Object.keys(jobs);
+        if (!keys.length) {
+          hideProgress();
+          return;
+        }
+        var total = 0;
+        var done = 0;
+        var details = [];
+        keys.forEach(function (k) {
+          var j = jobs[k];
+          total += j.total;
+          done += j.done;
+          details.push(MONTHS[Number(k) - 1] + ': ' + j.done + '/' + j.total + (j.label ? ' (' + j.label + ')' : ''));
+        });
+        showProgress({
+          title: keys.length > 1
+            ? 'Több hónap feltöltése párhuzamosan…'
+            : ('Feltöltés: ' + MONTHS[Number(keys[0]) - 1]),
+          detail: details.join(' · '),
+          counter: done + ' / ' + total,
+          percent: total ? (done / total) * 100 : 0
+        });
+      }
+
+      function prepareAndUpload(month, files) {
+        showError('');
+        // Do NOT lock the whole page — other months stay selectable.
+        if (!state._inflightByMonth) state._inflightByMonth = {};
+        if (!state.uploadJobs) state.uploadJobs = {};
+        state._inflightByMonth[month] = (state._inflightByMonth[month] || 0) + files.length;
+        state.activeUploadMonths = (state.activeUploadMonths || 0) + 1;
+        markMonthUploading(month, true);
+
+        var total = files.length;
+        var compressed = 0;
+        state.uploadJobs[month] = {
+          total: total,
+          done: 0,
+          label: 'tömörítés',
+          phase: 'compress'
+        };
+        refreshUploadProgressUi();
+
+        Promise.all(files.map(function (file) {
+          return compressFile(file).then(function (payload) {
+            compressed++;
+            if (state.uploadJobs[month]) {
+              state.uploadJobs[month].label = payload.name;
+              state.uploadJobs[month].done = compressed * 0.45; // visual weight during compress
+              state.uploadJobs[month].total = total;
+            }
+            // Recompute display with compress as first half — use dedicated compress progress per job
+            showProgress({
+              title: 'Tömörítés: ' + MONTHS[month - 1] + (state.editToken ? '' : ' (megrendelés a háttérben)'),
+              detail: payload.name + ' — más hónapokra kattinthat közben',
+              counter: compressed + ' / ' + total,
+              percent: (compressed / total) * 40
+            });
+            // Merge with other months' upload progress if any
+            refreshUploadProgressUiSoft(month, compressed, total, payload.name, true);
+            return payload;
+          });
+        }))
+          .then(function (payloads) {
+            if (state.uploadJobs[month]) {
+              state.uploadJobs[month].label = 'várakozás a megrendelésre…';
+              state.uploadJobs[month].done = 0;
+              state.uploadJobs[month].phase = 'wait';
+            }
+            refreshUploadProgressUi();
+            whenOrderReady(function (err, token) {
+              if (err) {
+                failMonthUpload(month, files.length, err);
+                return;
+              }
+              uploadParallel(token, month, payloads);
+            });
+          })
+          .catch(function (err) {
+            failMonthUpload(month, files.length, err && err.message ? err.message : String(err));
+          });
+      }
+
+      function refreshUploadProgressUiSoft(month, compressed, total, name, isCompress) {
+        // Keep multi-month summary accurate while one month is still compressing
+        var jobs = state.uploadJobs || {};
+        var parts = [];
+        Object.keys(jobs).forEach(function (k) {
+          var j = jobs[k];
+          if (Number(k) === month && isCompress) {
+            parts.push(MONTHS[month - 1] + ': tömörítés ' + compressed + '/' + total);
+          } else if (j.phase === 'upload') {
+            parts.push(MONTHS[Number(k) - 1] + ': ' + Math.floor(j.done) + '/' + j.total);
+          } else {
+            parts.push(MONTHS[Number(k) - 1] + ': ' + (j.label || j.phase || '…'));
+          }
+        });
+        var uploadDone = 0;
+        var uploadTotal = 0;
+        Object.keys(jobs).forEach(function (k) {
+          var j = jobs[k];
+          if (j.phase === 'upload') {
+            uploadDone += j.done;
+            uploadTotal += j.total;
+          } else if (Number(k) === month && isCompress) {
+            uploadDone += compressed * 0.4;
+            uploadTotal += total;
+          } else {
+            uploadTotal += j.total;
+          }
+        });
+        showProgress({
+          title: Object.keys(jobs).length > 1 ? 'Párhuzamos hónapok…' : (isCompress ? 'Tömörítés…' : 'Feltöltés…'),
+          detail: parts.join(' · ') + (name ? '' : ''),
+          counter: Math.floor(uploadDone) + ' / ' + Math.max(1, Math.floor(uploadTotal)),
+          percent: uploadTotal ? Math.min(99, (uploadDone / uploadTotal) * 100) : 0
+        });
+      }
+
+      function failMonthUpload(month, count, msg) {
+        state._inflightByMonth[month] = Math.max(0, (state._inflightByMonth[month] || 0) - count);
+        delete state.uploadJobs[month];
+        state.activeUploadMonths = Math.max(0, (state.activeUploadMonths || 0) - 1);
+        markMonthUploading(month, false);
+        if (state.activeUploadMonths === 0) hideProgress();
+        else refreshUploadProgressUi();
+        showError(msg);
+      }
+
+      function uploadParallel(token, month, payloads) {
+        var total = payloads.length;
+        var completed = 0;
+        var started = 0;
+        var inflight = 0;
+        var failed = false;
+        var concurrency = state.uploadConcurrency || 3;
+        var previewByName = {};
+        payloads.forEach(function (p) {
+          previewByName[p.name] = 'data:image/jpeg;base64,' + p.dataBase64;
+        });
+
+        state.uploadJobs[month] = {
+          total: total,
+          done: 0,
+          label: payloads[0] ? payloads[0].name : '',
+          phase: 'upload'
+        };
+        refreshUploadProgressUi();
+
+        function attachPreviews(beforeIds) {
+          (state.draft.photos || []).forEach(function (p) {
+            if (beforeIds[p.id]) return;
+            if (previewByName[p.originalFilename] && !state.previewById[p.id]) {
+              state.previewById[p.id] = previewByName[p.originalFilename];
+            }
+          });
+        }
+
+        function finishOk() {
+          state._inflightByMonth[month] = Math.max(0, (state._inflightByMonth[month] || 0) - total);
+          delete state.uploadJobs[month];
+          state.activeUploadMonths = Math.max(0, (state.activeUploadMonths || 0) - 1);
+          markMonthUploading(month, false);
+          refreshMonthThumbsOnly(month);
+          if (state.activeUploadMonths === 0) {
+            hideProgress();
+          } else {
+            refreshUploadProgressUi();
+          }
+        }
+
+        function finishErr(msg) {
+          failed = true;
+          failMonthUpload(month, total, msg);
+          refreshMonthThumbsOnly(month);
+        }
+
+        function pump() {
+          if (failed) return;
+          while (inflight < concurrency && started < total) {
+            (function (payload) {
+              started++;
+              inflight++;
+              var beforeIds = {};
+              (state.draft.photos || []).forEach(function (p) { beforeIds[p.id] = true; });
+              if (state.uploadJobs[month]) state.uploadJobs[month].label = payload.name;
+              refreshUploadProgressUi();
+              google.script.run
+                .withSuccessHandler(function (res) {
+                  inflight--;
+                  completed++;
+                  state.draft.photos = res.order.photos || [];
+                  attachPreviews(beforeIds);
+                  if (state.uploadJobs[month]) {
+                    state.uploadJobs[month].done = completed;
+                    state.uploadJobs[month].label = payload.name + ' kész';
+                  }
+                  refreshUploadProgressUi();
+                  refreshMonthThumbsOnly(month);
+                  if (completed >= total) finishOk();
+                  else pump();
+                })
+                .withFailureHandler(function (err) {
+                  inflight--;
+                  finishErr(err && err.message ? err.message : String(err));
+                })
+                .uploadPhoto(token, month, payload);
+            })(payloads[started]);
+          }
+        }
+
+        pump();
+      }
+
+      function refreshMonthThumbsOnly(month) {
+        var monthBlocks = document.querySelectorAll('.month');
+        if (!monthBlocks || !monthBlocks.length) {
+          render();
+          return;
+        }
+        var block = monthBlocks[month - 1];
+        if (!block) {
+          render();
+          return;
+        }
+        var list = photosForMonth(month);
+        var head = block.querySelector('.month-head span');
+        if (head) head.textContent = list.length + ' / ' + state.maxPhotos + ' (1–' + state.maxPhotos + ')';
+        var thumbs = block.querySelector('.thumbs');
+        if (thumbs) {
+          thumbs.innerHTML = list.map(function (p) { return thumbHtml(p); }).join('');
+          var dels = thumbs.querySelectorAll('[data-del]');
+          for (var j = 0; j < dels.length; j++) {
+            dels[j].onclick = function () { removePhoto(this.getAttribute('data-del')); };
+          }
+        }
+      }
+
+      function removePhoto(photoId) {
+        if (!state.editToken) return;
+        setStatus('Fénykép törlése…');
+        run('deletePhoto', [state.editToken, photoId], function (res) {
+          delete state.previewById[photoId];
+          state.draft.photos = res.order.photos || [];
+          render();
+        });
+      }
+
+      function thumbHtml(photo) {
+        var src = state.previewById[photo.id];
+        var inner = src
+          ? '<img src="' + src + '" alt="' + escapeAttr(photo.originalFilename || 'előnézet') + '" />'
+          : '<div style="padding:18px 4px;text-align:center;font-size:10px;word-break:break-all;color:#666">' +
+            escapeHtml(photo.originalFilename || 'kép') + '</div>';
+        return '<div class="thumb">' + inner +
+          '<button type="button" data-del="' + escapeAttr(photo.id) + '" title="Törlés">×</button></div>';
+      }
+
+      function renderStepNav() {
+        var html = '';
+        for (var i = 0; i < STEPS.length; i++) {
+          var cls = i === state.step ? 'active' : (i < state.step ? 'done' : '');
+          html += '<button type="button" class="' + cls + '" data-step="' + i + '">' + (i + 1) + '. ' + STEPS[i] + '</button>';
+        }
+        $('stepNav').innerHTML = html;
+        var buttons = $('stepNav').querySelectorAll('button');
+        for (var b = 0; b < buttons.length; b++) {
+          buttons[b].onclick = function () {
+            var s = Number(this.getAttribute('data-step'));
+            if (s <= state.step || state.editToken) {
+              state.step = s;
+              render();
+            }
+          };
+        }
+      }
+
+      function renderNav() {
+        if (state.done) {
+          $('nav').innerHTML = '';
+          return;
+        }
+        var nextLabel = state.step === 4 ? 'Megrendelés küldése' : 'Tovább';
+        $('nav').innerHTML =
+          '<button type="button" class="btn btn-secondary" id="backBtn"' + (state.step === 0 || state.busy ? ' disabled' : '') + '>Vissza</button>' +
+          '<button type="button" class="btn btn-primary" id="nextBtn"' + (state.busy || !canNext() ? ' disabled' : '') + '>' + nextLabel + '</button>';
+        var back = $('backBtn');
+        var next = $('nextBtn');
+        if (back) back.onclick = goBack;
+        if (next) next.onclick = goNext;
+      }
+
+      function render() {
+        showError('');
+        renderStepNav();
+        if (state.done) {
+          $('view').innerHTML =
+            '<div class="ok">' +
+            '<h2>Köszönjük! Megrendelés rögzítve.</h2>' +
+            '<p><strong>Rendelés azonosító:</strong> ' + escapeHtml(state.orderId) + '</p>' +
+            '<p>A fényképek a Google Drive <strong>Naptar</strong> mappába kerültek.</p>' +
+            (state.driveFolderUrl ? '<p><a href="' + escapeHtml(state.driveFolderUrl) + '" target="_blank">Drive mappa megnyitása</a></p>' : '') +
+            '<p class="hint">Szerkesztő token (őrizze meg):<br><code style="word-break:break-all">' + escapeHtml(state.editToken || '') + '</code></p>' +
+            '</div>';
+          renderNav();
+          return;
+        }
+
+        var d = state.draft;
+        var html = '';
+        if (state.step === 0) {
+          html =
+            '<div class="row two">' +
+            '<div><label>Teljes név *</label><input id="fullName" value="' + escapeAttr(d.fullName) + '" /></div>' +
+            '<div><label>Telefonszám (România) *</label><input id="phone" value="' + escapeAttr(d.phone) + '" placeholder="+40 712 345 678" />' +
+            '<div class="hint">Csak román szám: +40… vagy 07… / 02… / 03…</div></div>' +
+            '<div><label>E-mail (opcionális)</label><input id="email" type="email" value="' + escapeAttr(d.email) + '" /></div>' +
+            '<div><label>Megjegyzés</label><textarea id="comments" rows="3">' + escapeHtml(d.comments) + '</textarea></div>' +
+            '</div>';
+        } else if (state.step === 1) {
+          html =
+            '<label>Naptár év *</label><select id="year">' +
+            [2026,2027,2028,2029].map(function (y) {
+              return '<option value="' + y + '"' + (d.calendarYear === y ? ' selected' : '') + '>' + y + '</option>';
+            }).join('') + '</select>' +
+            '<label>Nyelv</label><select id="lang"><option value="hu">Magyar</option></select>' +
+            '<label>Formátum *</label><select id="format">' +
+            '<option value="portrait"' + (d.calendarFormatPref === 'portrait' ? ' selected' : '') + '>Álló (portrait) – A4</option>' +
+            '<option value="landscape"' + (d.calendarFormatPref === 'landscape' ? ' selected' : '') + '>Fekvő (landscape) – A4</option>' +
+            '</select>';
+        } else if (state.step === 2) {
+          html = '<p class="hint">Havonként 1–' + state.maxPhotos + ' fénykép (JPG/PNG/WebP). Nem kötelező minden hónap.</p>';
+          for (var m = 1; m <= 12; m++) {
+            var list = photosForMonth(m);
+            html += '<div class="month"><div class="month-head"><strong>' + MONTHS[m - 1] + '</strong><span>' + list.length + ' / ' + state.maxPhotos + ' (1–' + state.maxPhotos + ')</span></div>';
+            html += '<label class="drop">Húzza ide vagy válasszon 1–' + Math.max(1, state.maxPhotos - list.length) + ' fényképet' +
+              '<input type="file" accept="image/jpeg,image/png,image/webp" multiple style="display:none" data-month="' + m + '"' +
+              (list.length >= state.maxPhotos ? ' disabled' : '') + ' /></label>';
+            html += '<div class="thumbs">';
+            for (var p = 0; p < list.length; p++) {
+              html += thumbHtml(list[p]);
+            }
+            html += '</div></div>';
+          }
+        } else if (state.step === 3) {
+          html = '<button type="button" class="btn btn-secondary" id="addEvent">Esemény hozzáadása</button><div id="events"></div>';
+        } else if (state.step === 4) {
+          html =
+            '<div class="summary">' +
+            '<div><strong>Név:</strong> ' + escapeHtml(d.fullName) + '</div>' +
+            '<div><strong>Telefon:</strong> ' + escapeHtml(d.phone) + '</div>' +
+            '<div><strong>Év:</strong> ' + escapeHtml(String(d.calendarYear)) + '</div>' +
+            '<div><strong>Formátum:</strong> ' + (d.calendarFormatPref === 'landscape' ? 'Fekvő (landscape)' : 'Álló (portrait)') + '</div>' +
+            '<div><strong>Fényképek:</strong> ' + (d.photos || []).length + '</div>' +
+            '<div class="thumbs" style="margin-top:10px">' +
+            (d.photos || []).map(function (ph) { return thumbHtml(ph); }).join('') +
+            '</div>' +
+            '<div><strong>Események:</strong> ' + (d.events || []).length + '</div>' +
+            '</div>' +
+            '<label class="consent" for="consent">' +
+            '<input id="consent" type="checkbox"' + (d.privacyConsent ? ' checked' : '') + ' />' +
+            '<span class="consent-text">Elfogadom az adatkezelési tájékoztatót *' +
+            '<p class="consent-note">A megadott adatokat és fényképeket csak a naptár elkészítéséhez használjuk.</p>' +
+            '</span></label>';
+        }
+        $('view').innerHTML = html;
+        bindStepHandlers();
+        renderNav();
+        // Restore uploading markers after re-render so other months stay usable
+        Object.keys(state.uploadJobs || {}).forEach(function (k) {
+          markMonthUploading(Number(k), true);
+        });
+        if (state.activeUploadMonths > 0) refreshUploadProgressUi();
+      }
+
+      function bindStepHandlers() {
+        var d = state.draft;
+        function bind(id, key, isNum) {
+          var el = $(id);
+          if (!el) return;
+          el.oninput = el.onchange = function () {
+            d[key] = isNum ? Number(el.value) : el.value;
+            renderNav();
+          };
+        }
+        bind('fullName', 'fullName');
+        bind('phone', 'phone');
+        bind('email', 'email');
+        bind('comments', 'comments');
+        bind('year', 'calendarYear', true);
+        bind('format', 'calendarFormatPref');
+        var consent = $('consent');
+        if (consent) {
+          consent.onchange = function () {
+            d.privacyConsent = consent.checked;
+            renderNav();
+          };
+        }
+
+        var fileInputs = document.querySelectorAll('input[type=file][data-month]');
+        for (var i = 0; i < fileInputs.length; i++) {
+          fileInputs[i].onchange = function () {
+            onPickFiles(Number(this.getAttribute('data-month')), this);
+          };
+          thisLabelClick(fileInputs[i]);
+        }
+        var dels = document.querySelectorAll('[data-del]');
+        for (var j = 0; j < dels.length; j++) {
+          dels[j].onclick = function () { removePhoto(this.getAttribute('data-del')); };
+        }
+
+        var addEvent = $('addEvent');
+        if (addEvent) {
+          addEvent.onclick = function () {
+            d.events.push({ eventDate: d.calendarYear + '-01-01', description: '' });
+            renderEvents();
+          };
+          renderEvents();
+        }
+      }
+
+      function thisLabelClick(input) {
+        var label = input.parentNode;
+        if (label && label.classList.contains('drop')) {
+          label.onclick = function (e) {
+            if (e.target === input) return;
+            input.click();
+          };
+        }
+      }
+
+      function renderEvents() {
+        var box = $('events');
+        if (!box) return;
+        var html = '';
+        for (var i = 0; i < state.draft.events.length; i++) {
+          var ev = state.draft.events[i];
+          html += '<div class="event-row">' +
+            '<input type="date" data-ev="date" data-i="' + i + '" value="' + escapeAttr(ev.eventDate) + '" />' +
+            '<input data-ev="desc" data-i="' + i + '" placeholder="pl. Születésnap" value="' + escapeAttr(ev.description) + '" />' +
+            '<button type="button" class="btn btn-secondary" data-ev-del="' + i + '">Törlés</button></div>';
+        }
+        box.innerHTML = html;
+        var inputs = box.querySelectorAll('[data-ev]');
+        for (var k = 0; k < inputs.length; k++) {
+          inputs[k].oninput = function () {
+            var i = Number(this.getAttribute('data-i'));
+            if (this.getAttribute('data-ev') === 'date') state.draft.events[i].eventDate = this.value;
+            else state.draft.events[i].description = this.value;
+          };
+        }
+        var dels = box.querySelectorAll('[data-ev-del]');
+        for (var d = 0; d < dels.length; d++) {
+          dels[d].onclick = function () {
+            state.draft.events.splice(Number(this.getAttribute('data-ev-del')), 1);
+            renderEvents();
+          };
+        }
+      }
+
+      function escapeHtml(s) {
+        return String(s == null ? '' : s)
+          .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+      }
+      function escapeAttr(s) {
+        return escapeHtml(s).replace(/"/g, '&quot;');
+      }
+
+      render();
+    </script>
+  </body>
+</html>

@@ -53,8 +53,8 @@ public class CalendarEngineTests
     public void MultipleEvents_AppearOnSameDay()
     {
         var project = new CalendarProject { Year = 2027 };
-        project.Events.Add(new CustomEvent { Date = new DateOnly(2027, 5, 15), Description = "Boti születésnapja" });
-        project.Events.Add(new CustomEvent { Date = new DateOnly(2027, 5, 15), Description = "Családi vacsora" });
+        project.Events.Add(new CustomEvent { Month = 5, Day = 15, Description = "Boti születésnapja" });
+        project.Events.Add(new CustomEvent { Month = 5, Day = 15, Description = "Családi vacsora" });
 
         var page = _engine.BuildMonth(project, 5);
         var cell = page.Cells.Single(c => c.DayNumber == 15);

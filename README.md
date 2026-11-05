@@ -28,3 +28,13 @@ dotnet run --project src/CalendarGenerator.App
 7. Projekt mentés / betöltés / automatikus mentés
 
 Projektek helye: `%USERPROFILE%\Documents\CatholicCalendarCreator\Projects`
+
+---
+
+## Kapcsolódó modul: naptár rendelési platform (web)
+
+A `calendar-order-platform/` mappa **külön, elszigetelt** Node.js/React alkalmazás megrendelések fogadására.  
+A WPF naptárkészítőt nem módosítja.
+
+Részletek: [calendar-order-platform/README.md](calendar-order-platform/README.md)  
+Magyar telepítési útmutató: [calendar-order-platform/TELEPITESI_UTMUTATO_HU.md](calendar-order-platform/TELEPITESI_UTMUTATO_HU.md)
