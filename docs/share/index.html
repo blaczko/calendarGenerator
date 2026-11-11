@@ -35,10 +35,13 @@
     .hero p { margin: 10px 0 0; opacity: .92; }
     .body { padding: 22px 24px 28px; }
     .btn {
-      display: inline-block; background: var(--accent); color: #fff; text-decoration: none;
+      display: block; background: var(--accent); color: #fff; text-decoration: none;
       padding: 14px 20px; border-radius: 12px; font-weight: 700; border: 0; font: inherit; cursor: pointer;
       width: 100%; text-align: center;
     }
+    .btn-secondary { background: #efe4d6; color: var(--ink); margin-top: 10px; }
+    .hint { margin: 14px 0 0; font-size: 0.9rem; color: var(--muted); line-height: 1.45; }
+    .hint strong { color: var(--ink); }
   </style>
 </head>
 <body>
@@ -51,6 +54,8 @@
       </div>
       <div class="body">
         <button type="button" class="btn" id="openBtn">Megrendelés indítása</button>
+        <button type="button" class="btn btn-secondary" id="copyBtn" hidden>Link másolása</button>
+        <p class="hint" id="hint" hidden></p>
       </div>
     </div>
   </div>
@@ -59,6 +64,7 @@
       var ORDER_URL = 'https://script.google.com/macros/s/AKfycbwx0WrFHBjckGTiAsfqPCZbgBfCyPQeT64Xv1cuoC7Tz-oc0RlEn-h6I6j0-hnrOSwa/exec';
       var ua = navigator.userAgent || '';
       var isAndroid = /Android/i.test(ua);
+      var isIOS = /iPhone|iPad|iPod/i.test(ua);
       // Facebook / Instagram / Line in-app browsers cannot load Apps Script.
       var isInAppBrowser =
         /FBAN|FBAV|FB_IAB|FBIOS|FB4A|Instagram|Line\//i.test(ua) ||
@@ -66,19 +72,43 @@
       // Keep this landing for social crawlers (OG preview).
       var isBot = /bot|crawl|spider|slurp|facebookexternalhit|meta-externalagent|whatsapp|telegram/i.test(ua);
 
-      function androidChromeIntent(url) {
+      var openBtn = document.getElementById('openBtn');
+      var copyBtn = document.getElementById('copyBtn');
+      var hint = document.getElementById('hint');
+
+      /**
+       * Hand off to the OS so it can open (or ask for) an external browser.
+       * A webpage cannot draw the native chooser itself — only OS URL schemes /
+       * intents can. Android: VIEW intent. iOS: x-safari-https → Safari.
+       */
+      function androidOpenChooser(url) {
         var bare = url.replace(/^https?:\/\//i, '');
-        return 'intent://' + bare + '#Intent;scheme=https;package=com.android.chrome;S.browser_fallback_url=' +
-          encodeURIComponent(url) + ';end';
+        return 'intent://' + bare +
+          '#Intent;scheme=https;action=android.intent.action.VIEW;' +
+          'S.browser_fallback_url=' + encodeURIComponent(url) + ';end';
       }
 
-      function openExternal() {
-        if (isAndroid) {
-          window.location.href = androidChromeIntent(ORDER_URL);
-          return;
+      function iosOpenSafari(url) {
+        // Opens Safari from in-app WebViews (Facebook, Instagram, etc.).
+        return url.replace(/^https:\/\//i, 'x-safari-https://');
+      }
+
+      function iosOpenChrome(url) {
+        return url.replace(/^https:\/\//i, 'googlechromes://');
+      }
+
+      function copyOrderLink() {
+        function done() {
+          hint.hidden = false;
+          hint.textContent = 'Link kimásolva. Illessze be a külső böngésző címsorába.';
         }
-        var w = window.open(ORDER_URL, '_blank', 'noopener');
-        if (!w) window.location.href = ORDER_URL;
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(ORDER_URL).then(done).catch(function () {
+            window.prompt('Másolja a linket:', ORDER_URL);
+          });
+        } else {
+          window.prompt('Másolja a linket:', ORDER_URL);
+        }
       }
 
       // Desktop / normal mobile browser: Apps Script can load → go straight there.
@@ -87,13 +117,41 @@
         return;
       }
 
-      document.getElementById('openBtn').onclick = function () {
-        var ok = window.confirm(
-          'A megrendeléshez külső böngésző kell (Chrome vagy Safari).\n\n' +
-          'Megnyitja most külső böngészőben?'
-        );
-        if (!ok) return;
-        openExternal();
+      openBtn.textContent = 'Megnyitás böngészőben';
+      copyBtn.hidden = false;
+      copyBtn.onclick = copyOrderLink;
+
+      if (isIOS) {
+        hint.hidden = false;
+        hint.innerHTML =
+          'Megnyitja a Safarit. Ha nem működik: jobb felső <strong>⋯</strong> → ' +
+          '<strong>Megnyitás külső böngészőben</strong>.';
+        openBtn.onclick = function () {
+          // Primary: hand off to Safari via iOS URL scheme (OS-level, not a fake dialog).
+          window.location.href = iosOpenSafari(ORDER_URL);
+          // Fallback note after a moment if still on this page.
+          setTimeout(function () {
+            hint.innerHTML =
+              'Ha Safari nem nyílt meg, próbálja a <strong>⋯ → Megnyitás külső böngészőben</strong> menüt, ' +
+              'vagy a Link másolása gombot. Chrome-hoz: ' +
+              '<a href="' + iosOpenChrome(ORDER_URL) + '">Megnyitás Chrome-ban</a>.';
+          }, 1200);
+        };
+        return;
+      }
+
+      if (isAndroid) {
+        hint.hidden = false;
+        hint.textContent =
+          'A telefon megkérdezheti, melyik böngészővel nyissa meg (Chrome, Firefox stb.).';
+        openBtn.onclick = function () {
+          window.location.href = androidOpenChooser(ORDER_URL);
+        };
+        return;
+      }
+
+      openBtn.onclick = function () {
+        window.location.href = ORDER_URL;
       };
     })();
   </script>
