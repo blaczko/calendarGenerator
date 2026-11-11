@@ -78,7 +78,7 @@ After editing files in Apps Script, create a **new deployment version**
 cannot load Apps Script (blank white page). Post this landing page instead:
 
 1. Host `docs/share/` (GitHub → Settings → Pages → Source: `/docs`).
-2. Post: `https://zataipixel.ro/share/`
+2. Post: `https://blaczko.github.io/calendarGenerator/share/`
 3. That page detects Facebook’s browser and opens Chrome / offers copy-link.
 4. Scrape/refresh in [Facebook Sharing Debugger](https://developers.facebook.com/tools/debug/).
 
