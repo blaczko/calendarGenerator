@@ -59,11 +59,32 @@
       var ORDER_URL = 'https://script.google.com/macros/s/AKfycbwx0WrFHBjckGTiAsfqPCZbgBfCyPQeT64Xv1cuoC7Tz-oc0RlEn-h6I6j0-hnrOSwa/exec';
       var ua = navigator.userAgent || '';
       var isAndroid = /Android/i.test(ua);
+      // Facebook / Instagram / Line in-app browsers cannot load Apps Script.
+      var isInAppBrowser =
+        /FBAN|FBAV|FB_IAB|FBIOS|FB4A|Instagram|Line\//i.test(ua) ||
+        (/\bwv\b/i.test(ua) && /Facebook/i.test(ua));
+      // Keep this landing for social crawlers (OG preview).
+      var isBot = /bot|crawl|spider|slurp|facebookexternalhit|meta-externalagent|whatsapp|telegram/i.test(ua);
 
       function androidChromeIntent(url) {
         var bare = url.replace(/^https?:\/\//i, '');
         return 'intent://' + bare + '#Intent;scheme=https;package=com.android.chrome;S.browser_fallback_url=' +
           encodeURIComponent(url) + ';end';
+      }
+
+      function openExternal() {
+        if (isAndroid) {
+          window.location.href = androidChromeIntent(ORDER_URL);
+          return;
+        }
+        var w = window.open(ORDER_URL, '_blank', 'noopener');
+        if (!w) window.location.href = ORDER_URL;
+      }
+
+      // Desktop / normal mobile browser: Apps Script can load → go straight there.
+      if (!isInAppBrowser && !isBot) {
+        window.location.replace(ORDER_URL);
+        return;
       }
 
       document.getElementById('openBtn').onclick = function () {
@@ -72,13 +93,7 @@
           'Megnyitja most külső böngészőben?'
         );
         if (!ok) return;
-
-        if (isAndroid) {
-          window.location.href = androidChromeIntent(ORDER_URL);
-          return;
-        }
-        var w = window.open(ORDER_URL, '_blank', 'noopener');
-        if (!w) window.location.href = ORDER_URL;
+        openExternal();
       };
     })();
   </script>
