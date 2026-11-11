@@ -1,4 +1,7 @@
 ﻿using System.Windows;
+using System.Windows.Controls;
+using System.Windows.Media;
+using CalendarGenerator.App.Controls;
 using CalendarGenerator.App.ViewModels;
 using CalendarGenerator.Core.Models;
 
@@ -6,6 +9,8 @@ namespace CalendarGenerator.App;
 
 public partial class MainWindow : Window
 {
+    private readonly List<CalendarPageControl> _previewPages = [];
+
     public MainWindow()
     {
         InitializeComponent();
@@ -16,6 +21,7 @@ public partial class MainWindow : Window
 
     private void OnLoaded(object sender, RoutedEventArgs e)
     {
+        EnsurePreviewPages();
         SyncOrientationRadios();
         Vm.PhotosChanged += (_, _) =>
         {
@@ -25,7 +31,6 @@ public partial class MainWindow : Window
         Vm.PropertyChanged += (_, args) =>
         {
             if (args.PropertyName is nameof(MainViewModel.CurrentPage)
-                or nameof(MainViewModel.SelectedMonth)
                 or nameof(MainViewModel.Project)
                 or nameof(MainViewModel.SelectedTemplateId)
                 or nameof(MainViewModel.SelectedOrientation))
@@ -33,18 +38,52 @@ public partial class MainWindow : Window
                 SyncCropEditor();
                 SyncLivePreview();
             }
-            else if (args.PropertyName == nameof(MainViewModel.SelectedPhoto))
+            else if (args.PropertyName == nameof(MainViewModel.SelectedMonth))
             {
-                CropEditor.SetPhoto(Vm.SelectedPhoto?.Photo);
-                LivePreviewPage.SelectInteractivePhoto(Vm.SelectedPhoto?.Photo.Id);
+                SyncCropEditor();
             }
             else if (args.PropertyName == nameof(MainViewModel.PreviewImage))
             {
-                LivePreviewPage.RefreshInteractivePhotos();
+                // "Frissítés" and theme/layout updates bump PreviewImage — rebuild pages if visible.
+                SyncLivePreview();
+            }
+            else if (args.PropertyName == nameof(MainViewModel.SelectedPhoto))
+            {
+                CropEditor.SetPhoto(Vm.SelectedPhoto?.Photo);
+                SelectPhotoOnPreviewPages(Vm.SelectedPhoto?.Photo.Id);
             }
         };
         SyncCropEditor();
         SyncLivePreview();
+    }
+
+    private void EnsurePreviewPages()
+    {
+        if (_previewPages.Count > 0)
+            return;
+
+        for (var month = 1; month <= 12; month++)
+        {
+            var page = new CalendarPageControl { Tag = month };
+            page.PhotoLayoutChanged += LivePreviewPage_PhotoLayoutChanged;
+
+            var frame = new Border
+            {
+                Background = new SolidColorBrush(Color.FromRgb(0xF0, 0xEB, 0xE3)),
+                CornerRadius = new CornerRadius(4),
+                Padding = new Thickness(8),
+                Margin = new Thickness(0, 0, 0, 18),
+                Child = new Viewbox
+                {
+                    Stretch = Stretch.Uniform,
+                    HorizontalAlignment = HorizontalAlignment.Center,
+                    Child = page
+                }
+            };
+
+            PreviewPagesHost.Children.Add(frame);
+            _previewPages.Add(page);
+        }
     }
 
     private void SyncCropEditor()
@@ -56,7 +95,16 @@ public partial class MainWindow : Window
     private void SyncLivePreview()
     {
         if (!IsLoaded) return;
-        Vm.BindInteractivePreview(LivePreviewPage);
+        EnsurePreviewPages();
+        // Rebuild all month pages when Preview is open (or data changed via PhotosChanged).
+        if (Vm.IsPreview)
+            Vm.BindAllInteractivePreviews(_previewPages);
+    }
+
+    private void SelectPhotoOnPreviewPages(Guid? photoId)
+    {
+        foreach (var page in _previewPages)
+            page.SelectInteractivePhoto(photoId);
     }
 
     private void LivePreviewPage_PhotoLayoutChanged(object? sender, EventArgs e) =>
@@ -64,7 +112,8 @@ public partial class MainWindow : Window
 
     private void CropEditor_CropChanged(object? sender, EventArgs e)
     {
-        LivePreviewPage.RefreshInteractivePhotos();
+        foreach (var page in _previewPages)
+            page.RefreshInteractivePhotos();
         Vm.NotifyPhotoLayoutChanged();
         Vm.StatusMessage = "Vágás mentve.";
     }

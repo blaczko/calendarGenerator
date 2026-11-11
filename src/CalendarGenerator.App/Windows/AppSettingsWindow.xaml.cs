@@ -53,9 +53,13 @@ public partial class AppSettingsWindow : Window
     private async void Connect_Click(object sender, RoutedEventArgs e)
     {
         ApplyFormToSettings();
+        _store.Save(_settings); // persist ID/secret before browser auth
+        ClientIdBox.Text = _settings.GoogleClientId;
+        ClientSecretBox.Text = _settings.GoogleClientSecret;
         try
         {
-            DriveStatusText.Text = "Böngészőben engedélyezze a Google Drive hozzáférést…";
+            DriveStatusText.Text =
+                $"Kapcsolódás Client ID-vel: {_settings.GoogleClientId} … engedélyezze a böngészőben.";
             await _drive.ConnectAsync(_settings);
             _store.Save(_settings);
             UpdateDriveStatus();

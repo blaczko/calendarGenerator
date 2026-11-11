@@ -1,0 +1,12 @@
+# Keep local tooling / docs out of the Apps Script project
+node_modules/**
+package.json
+package-lock.json
+scripts/**
+README.md
+social-share.html
+.clasp.json.example
+.clasp-deploy.json
+.clasp-deploy.json.example
+.git/**
+**/*.md

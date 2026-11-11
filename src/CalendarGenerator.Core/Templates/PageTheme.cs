@@ -51,6 +51,15 @@ public sealed class PageTheme
     public string HeaderFillHex { get; set; } = "#AAEFE8DE";
     public string CalendarPanelHex { get; set; } = "#E6FFFAFA";
 
+    /// <summary>Photo frame border thickness in DIPs (0 = no border).</summary>
+    public double PhotoBorderThickness { get; set; } = 2;
+
+    /// <summary>Photo frame border / matte color.</summary>
+    public string PhotoBorderColorHex { get; set; } = "#FFFFFF";
+
+    /// <summary>Photo frame corner radius in DIPs.</summary>
+    public double PhotoCornerRadius { get; set; } = 2;
+
     [JsonIgnore]
     public bool HasBackgroundImage =>
         (!string.IsNullOrWhiteSpace(ProjectCopyPath) && File.Exists(ProjectCopyPath))
@@ -93,7 +102,10 @@ public sealed class PageTheme
         GridLineHex = GridLineHex,
         WeekendFillHex = WeekendFillHex,
         HeaderFillHex = HeaderFillHex,
-        CalendarPanelHex = CalendarPanelHex
+        CalendarPanelHex = CalendarPanelHex,
+        PhotoBorderThickness = PhotoBorderThickness,
+        PhotoBorderColorHex = PhotoBorderColorHex,
+        PhotoCornerRadius = PhotoCornerRadius
     };
 
     public static PageTheme FromTemplate(TemplateDefinition template) => new()
@@ -122,7 +134,10 @@ public sealed class PageTheme
         GridLineHex = template.GridLineHex,
         WeekendFillHex = template.WeekendFillHex,
         HeaderFillHex = template.HeaderFillHex,
-        CalendarPanelHex = template.CalendarPanelHex
+        CalendarPanelHex = template.CalendarPanelHex,
+        PhotoBorderThickness = template.PhotoBorderThickness,
+        PhotoBorderColorHex = template.PhotoBorderColorHex,
+        PhotoCornerRadius = template.PhotoCornerRadius
     };
 
     public TemplateDefinition AsBackgroundTemplate() => new()

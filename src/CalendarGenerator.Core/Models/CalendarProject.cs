@@ -47,23 +47,14 @@ public sealed class CalendarProject : INotifyPropertyChanged
 
     public event PropertyChangedEventHandler? PropertyChanged;
 
-    public static List<MonthPhotos> CreateDefaultMonths()
-    {
-        var templateIds = new[]
-        {
-            "soft-beige", "pastel-gradient", "watercolor", "geometric",
-            "paper-texture", "botanical-abstract", "marble", "earth-tones",
-            "pastel-waves", "scandinavian", "linen", "monochrome"
-        };
-
-        return Enumerable.Range(1, 12)
+    public static List<MonthPhotos> CreateDefaultMonths() =>
+        Enumerable.Range(1, 12)
             .Select(m => new MonthPhotos
             {
                 Month = m,
-                TemplateId = templateIds[(m - 1) % templateIds.Length]
+                TemplateId = "soft-beige"
             })
             .ToList();
-    }
 
     public MonthPhotos GetMonth(int month) =>
         Months.First(m => m.Month == month);

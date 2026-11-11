@@ -1,4 +1,7 @@
 using System.IO;
+using System.Windows;
+using System.Windows.Media;
+using System.Windows.Media.Imaging;
 using CalendarGenerator.Core.Calendar;
 using CalendarGenerator.Core.Models;
 using QuestPDF.Fluent;
@@ -11,6 +14,9 @@ public sealed class PdfExportService
 {
     private readonly PageRenderService _pageRender;
     private readonly CalendarEngine _calendarEngine;
+
+    /// <summary>Preview strip scale relative to 300 DPI page renders (keeps long JPEG manageable).</summary>
+    private const double PreviewStripScale = 0.4;
 
     public PdfExportService(PageRenderService pageRender, CalendarEngine calendarEngine)
     {
@@ -25,14 +31,25 @@ public sealed class PdfExportService
         IProgress<string>? progress = null,
         CancellationToken ct = default)
     {
-        await ExportInternalAsync(project, outputPath, watermark: false, progress, ct);
+        Directory.CreateDirectory(Path.GetDirectoryName(outputPath)!);
+        var tempDir = Path.Combine(Path.GetTempPath(), "CalendarGenerator", project.Id.ToString("N"), "clean-only");
+        Directory.CreateDirectory(tempDir);
+        try
+        {
+            var pages = await RenderMonthPagesAsync(project, tempDir, progress, ct);
+            await WriteCleanPdfAsync(project, pages, outputPath, progress, ct);
+        }
+        finally
+        {
+            TryDeleteDir(tempDir);
+        }
     }
 
     /// <summary>
-    /// Exports two PDFs into <paramref name="outputFolder"/>:
-    /// clean: {orderId}.pdf and watermarked: {orderId}_watermarked.pdf
+    /// Exports a clean PDF and one long watermarked JPEG (all 12 pages stacked).
+    /// Paths: {orderId}.pdf and {orderId}_preview.jpg
     /// </summary>
-    public async Task<(string CleanPath, string WatermarkedPath)> ExportOrderPairAsync(
+    public async Task<(string CleanPath, string PreviewStripPath)> ExportOrderPairAsync(
         CalendarProject project,
         string outputFolder,
         string orderId,
@@ -42,88 +59,135 @@ public sealed class PdfExportService
         Directory.CreateDirectory(outputFolder);
         var safeId = string.IsNullOrWhiteSpace(orderId) ? $"Naptar_{project.Year}" : SanitizeFileName(orderId);
         var cleanPath = Path.Combine(outputFolder, $"{safeId}.pdf");
-        var wmPath = Path.Combine(outputFolder, $"{safeId}_watermarked.pdf");
+        var stripPath = Path.Combine(outputFolder, $"{safeId}_preview.jpg");
 
-        progress?.Report("PDF (tiszta) renderelése…");
-        await ExportInternalAsync(project, cleanPath, watermark: false, progress, ct);
-        progress?.Report("PDF (vízjel) renderelése…");
-        await ExportInternalAsync(project, wmPath, watermark: true, progress, ct);
-        progress?.Report("Kész.");
-        return (cleanPath, wmPath);
+        var tempDir = Path.Combine(Path.GetTempPath(), "CalendarGenerator", project.Id.ToString("N"), "export-pair");
+        Directory.CreateDirectory(tempDir);
+        try
+        {
+            var pages = await RenderMonthPagesAsync(project, tempDir, progress, ct);
+
+            progress?.Report("PDF (tiszta) összeállítása…");
+            await WriteCleanPdfAsync(project, pages, cleanPath, progress, ct);
+
+            progress?.Report("Vízjeles előnézet kép összeállítása…");
+            await Task.Run(() => WriteWatermarkedStrip(pages, stripPath), ct);
+
+            progress?.Report("Kész.");
+            return (cleanPath, stripPath);
+        }
+        finally
+        {
+            TryDeleteDir(tempDir);
+        }
     }
 
-    private async Task ExportInternalAsync(
+    private async Task<List<string>> RenderMonthPagesAsync(
         CalendarProject project,
-        string outputPath,
-        bool watermark,
+        string tempDir,
         IProgress<string>? progress,
         CancellationToken ct)
     {
         project.Paper.ApplyPreset();
-        var tempDir = Path.Combine(Path.GetTempPath(), "CalendarGenerator", project.Id.ToString("N"),
-            watermark ? "wm" : "clean");
-        Directory.CreateDirectory(tempDir);
-
         var pageImages = new List<string>();
-        string? logoPath = null;
+        for (var month = 1; month <= 12; month++)
+        {
+            ct.ThrowIfCancellationRequested();
+            progress?.Report($"Lap renderelése: {month}/12…");
+            var model = _calendarEngine.BuildMonth(project, month);
+            var png = Path.Combine(tempDir, $"month-{month:00}.png");
+            await _pageRender.RenderMonthToPngAsync(project, model, png);
+            pageImages.Add(png);
+        }
+
+        return pageImages;
+    }
+
+    private static async Task WriteCleanPdfAsync(
+        CalendarProject project,
+        IReadOnlyList<string> pageImages,
+        string outputPath,
+        IProgress<string>? progress,
+        CancellationToken ct)
+    {
+        var widthPt = project.Paper.WidthMm / 25.4 * 72;
+        var heightPt = project.Paper.HeightMm / 25.4 * 72;
+
+        await Task.Run(() =>
+        {
+            Document.Create(container =>
+            {
+                foreach (var imagePath in pageImages)
+                {
+                    container.Page(page =>
+                    {
+                        page.Size(new PageSize((float)widthPt, (float)heightPt));
+                        page.Margin(0);
+                        page.Content().Image(imagePath).FitArea();
+                    });
+                }
+            }).GeneratePdf(outputPath);
+        }, ct);
+    }
+
+    private static void WriteWatermarkedStrip(IReadOnlyList<string> pageImages, string outputPath)
+    {
+        if (pageImages.Count == 0)
+            throw new InvalidOperationException("Nincs renderelt oldal a vízjeles képhez.");
+
+        var logoPath = WatermarkLogoService.EnsureTransparentLogoPng();
+        var logo = LoadBitmap(logoPath);
+        var pages = pageImages.Select(LoadBitmap).ToList();
+
+        var srcW = pages[0].PixelWidth;
+        var srcH = pages[0].PixelHeight;
+        var outW = Math.Max(1, (int)Math.Round(srcW * PreviewStripScale));
+        var pageOutH = Math.Max(1, (int)Math.Round(srcH * PreviewStripScale));
+        var outH = pageOutH * pages.Count;
+
+        var visual = new DrawingVisual();
+        using (var dc = visual.RenderOpen())
+        {
+            for (var i = 0; i < pages.Count; i++)
+            {
+                var rect = new Rect(0, i * pageOutH, outW, pageOutH);
+                dc.DrawImage(pages[i], rect);
+                dc.DrawImage(logo, rect);
+            }
+        }
+
+        var rtb = new RenderTargetBitmap(outW, outH, 96, 96, PixelFormats.Pbgra32);
+        rtb.Render(visual);
+        rtb.Freeze();
+
+        var encoder = new JpegBitmapEncoder { QualityLevel = 85 };
+        encoder.Frames.Add(BitmapFrame.Create(rtb));
+        Directory.CreateDirectory(Path.GetDirectoryName(outputPath)!);
+        using var fs = File.Create(outputPath);
+        encoder.Save(fs);
+    }
+
+    private static BitmapSource LoadBitmap(string path)
+    {
+        var bmp = new BitmapImage();
+        bmp.BeginInit();
+        bmp.UriSource = new Uri(path, UriKind.Absolute);
+        bmp.CacheOption = BitmapCacheOption.OnLoad;
+        bmp.EndInit();
+        bmp.Freeze();
+        return bmp;
+    }
+
+    private static void TryDeleteDir(string tempDir)
+    {
         try
         {
-            if (watermark)
-            {
-                progress?.Report("Vízjel logó előkészítése…");
-                logoPath = WatermarkLogoService.EnsureTransparentLogoPng();
-            }
-
-            for (var month = 1; month <= 12; month++)
-            {
-                ct.ThrowIfCancellationRequested();
-                progress?.Report($"Lap renderelése: {month}/12…");
-                var model = _calendarEngine.BuildMonth(project, month);
-                var png = Path.Combine(tempDir, $"month-{month:00}.png");
-                await _pageRender.RenderMonthToPngAsync(project, model, png);
-                pageImages.Add(png);
-            }
-
-            progress?.Report(watermark ? "Vízjeles PDF összeállítása…" : "PDF összeállítása…");
-            var widthPt = project.Paper.WidthMm / 25.4 * 72;
-            var heightPt = project.Paper.HeightMm / 25.4 * 72;
-            var logo = logoPath;
-
-            await Task.Run(() =>
-            {
-                Document.Create(container =>
-                {
-                    foreach (var imagePath in pageImages)
-                    {
-                        container.Page(page =>
-                        {
-                            page.Size(new PageSize((float)widthPt, (float)heightPt));
-                            page.Margin(0);
-                            page.Content().Layers(layers =>
-                            {
-                                layers.PrimaryLayer().Image(imagePath).FitArea();
-                                if (watermark && logo is not null)
-                                {
-                                    layers.Layer().AlignCenter().AlignMiddle().Width(260).Height(140)
-                                        .Image(logo).FitArea();
-                                }
-                            });
-                        });
-                    }
-                }).GeneratePdf(outputPath);
-            }, ct);
+            if (Directory.Exists(tempDir))
+                Directory.Delete(tempDir, recursive: true);
         }
-        finally
+        catch
         {
-            try
-            {
-                if (Directory.Exists(tempDir))
-                    Directory.Delete(tempDir, recursive: true);
-            }
-            catch
-            {
-                // best-effort cleanup
-            }
+            // best-effort cleanup
         }
     }
 

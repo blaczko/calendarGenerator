@@ -161,7 +161,16 @@
                                         <ListBox.ItemTemplate>
                                             <DataTemplate>
                                                 <StackPanel Margin="0,4">
-                                                    <TextBlock Text="{Binding OrderId}" FontWeight="SemiBold" />
+                                                    <DockPanel>
+                                                        <TextBlock Text="IRODA"
+                                                                   DockPanel.Dock="Right"
+                                                                   FontSize="10"
+                                                                   FontWeight="SemiBold"
+                                                                   Foreground="#1E3A5F"
+                                                                   Margin="8,0,0,0"
+                                                                   Visibility="{Binding DirectFromOffice, Converter={StaticResource BoolToVis}}" />
+                                                        <TextBlock Text="{Binding OrderId}" FontWeight="SemiBold" />
+                                                    </DockPanel>
                                                     <TextBlock Text="{Binding FullName}" FontSize="12" Foreground="#6B6258" />
                                                     <TextBlock FontSize="11" Foreground="#8A8074">
                                                         <Run Text="{Binding Status, Mode=OneWay}" />
@@ -199,6 +208,11 @@
                                     <ComboBox ItemsSource="{Binding OrderStatuses}"
                                               SelectedItem="{Binding SelectedOrder.Status}"
                                               Margin="0,0,0,10" Width="220" HorizontalAlignment="Left" />
+                                    <TextBlock Text="Irodai megrendelés (közvetlen)"
+                                               FontWeight="SemiBold"
+                                               Foreground="#1E3A5F"
+                                               Margin="0,0,0,10"
+                                               Visibility="{Binding SelectedOrder.DirectFromOffice, Converter={StaticResource BoolToVis}}" />
                                     <TextBlock Text="Megjegyzés" FontWeight="SemiBold" Margin="0,0,0,4" />
                                     <TextBox Text="{Binding SelectedOrder.Comments, UpdateSourceTrigger=PropertyChanged}"
                                              AcceptsReturn="True" Height="70" TextWrapping="Wrap"
@@ -375,20 +389,8 @@
                         <ScrollViewer VerticalScrollBarVisibility="Auto">
                             <StackPanel>
                                 <TextBlock Text="Megjelenés" FontFamily="Georgia" FontSize="24" />
-                                <TextBlock Text="Háttér, naptárstílus, betűtípus és színek — hónaponként állítható."
+                                <TextBlock Text="Háttér, naptárstílus, betűtípus és színek — minden hónapra egyszerre érvényes."
                                            Foreground="{StaticResource TextMuted}" Margin="0,4,0,12" TextWrapping="Wrap" />
-
-                                <DockPanel Margin="0,0,0,12">
-                                    <Button DockPanel.Dock="Right"
-                                            Content="Minden hónapra"
-                                            Style="{StaticResource SecondaryButton}"
-                                            Command="{Binding ApplyTemplateToAllCommand}"
-                                            Margin="8,0,0,0" />
-                                    <ComboBox ItemsSource="{Binding MonthOptions}"
-                                              DisplayMemberPath="Name"
-                                              SelectedValuePath="Month"
-                                              SelectedValue="{Binding SelectedMonth}" />
-                                </DockPanel>
 
                                 <TextBlock Text="1. Háttér" FontWeight="SemiBold" Margin="0,0,0,6" />
                                 <ListBox ItemsSource="{Binding Templates}"
@@ -452,16 +454,16 @@
                                         <ColumnDefinition Width="*" />
                                     </Grid.ColumnDefinitions>
                                     <StackPanel Margin="0,0,6,0">
-                                        <TextBlock Text="Elsődleges" FontSize="10" />
-                                        <TextBox Text="{Binding ThemeEditor.PrimaryHex, UpdateSourceTrigger=PropertyChanged}" />
+                                        <TextBlock Text="Elsődleges" FontSize="10" Margin="0,0,0,4" />
+                                        <controls:HexColorPicker HexColor="{Binding ThemeEditor.PrimaryHex, Mode=TwoWay}" />
                                     </StackPanel>
                                     <StackPanel Grid.Column="1" Margin="0,0,6,0">
-                                        <TextBlock Text="Másodlagos" FontSize="10" />
-                                        <TextBox Text="{Binding ThemeEditor.SecondaryHex, UpdateSourceTrigger=PropertyChanged}" />
+                                        <TextBlock Text="Másodlagos" FontSize="10" Margin="0,0,0,4" />
+                                        <controls:HexColorPicker HexColor="{Binding ThemeEditor.SecondaryHex, Mode=TwoWay}" />
                                     </StackPanel>
                                     <StackPanel Grid.Column="2">
-                                        <TextBlock Text="Hangsúly" FontSize="10" />
-                                        <TextBox Text="{Binding ThemeEditor.AccentHex, UpdateSourceTrigger=PropertyChanged}" />
+                                        <TextBlock Text="Hangsúly" FontSize="10" Margin="0,0,0,4" />
+                                        <controls:HexColorPicker HexColor="{Binding ThemeEditor.AccentHex, Mode=TwoWay}" />
                                     </StackPanel>
                                 </Grid>
 
@@ -515,7 +517,7 @@
                                         Value="{Binding ThemeEditor.NameDayFontSize}" Margin="0,0,0,14" />
 
                                 <TextBlock Text="4. Színek" FontWeight="SemiBold" Margin="0,0,0,6" />
-                                <Grid>
+                                <Grid Margin="0,0,0,14">
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="*" />
                                         <ColumnDefinition Width="*" />
@@ -525,26 +527,37 @@
                                         <RowDefinition Height="Auto" />
                                     </Grid.RowDefinitions>
                                     <StackPanel Margin="0,0,8,8">
-                                        <TextBlock Text="Cím színe" FontSize="10" />
-                                        <ComboBox ItemsSource="{Binding ColorChoices}" DisplayMemberPath="Name"
-                                                  SelectedValuePath="Hex" SelectedValue="{Binding ThemeEditor.TitleColorHex}" />
+                                        <TextBlock Text="Cím színe" FontSize="10" Margin="0,0,0,4" />
+                                        <controls:HexColorPicker HexColor="{Binding ThemeEditor.TitleColorHex, Mode=TwoWay}" />
                                     </StackPanel>
                                     <StackPanel Grid.Column="1" Margin="0,0,0,8">
-                                        <TextBlock Text="Nap színe" FontSize="10" />
-                                        <ComboBox ItemsSource="{Binding ColorChoices}" DisplayMemberPath="Name"
-                                                  SelectedValuePath="Hex" SelectedValue="{Binding ThemeEditor.DayColorHex}" />
+                                        <TextBlock Text="Nap színe" FontSize="10" Margin="0,0,0,4" />
+                                        <controls:HexColorPicker HexColor="{Binding ThemeEditor.DayColorHex, Mode=TwoWay}" />
                                     </StackPanel>
                                     <StackPanel Grid.Row="1" Margin="0,0,8,0">
-                                        <TextBlock Text="Névnap színe" FontSize="10" />
-                                        <ComboBox ItemsSource="{Binding ColorChoices}" DisplayMemberPath="Name"
-                                                  SelectedValuePath="Hex" SelectedValue="{Binding ThemeEditor.NameDayColorHex}" />
+                                        <TextBlock Text="Névnap színe" FontSize="10" Margin="0,0,0,4" />
+                                        <controls:HexColorPicker HexColor="{Binding ThemeEditor.NameDayColorHex, Mode=TwoWay}" />
                                     </StackPanel>
                                     <StackPanel Grid.Row="1" Grid.Column="1">
-                                        <TextBlock Text="Esemény színe" FontSize="10" />
-                                        <ComboBox ItemsSource="{Binding ColorChoices}" DisplayMemberPath="Name"
-                                                  SelectedValuePath="Hex" SelectedValue="{Binding ThemeEditor.EventColorHex}" />
+                                        <TextBlock Text="Esemény színe" FontSize="10" Margin="0,0,0,4" />
+                                        <controls:HexColorPicker HexColor="{Binding ThemeEditor.EventColorHex, Mode=TwoWay}" />
                                     </StackPanel>
                                 </Grid>
+
+                                <TextBlock Text="5. Fénykép keret" FontWeight="SemiBold" Margin="0,0,0,6" />
+                                <TextBlock Text="Keretvastagság, szín és sarkok lekerekítése a kollázs képein."
+                                           FontSize="11"
+                                           Foreground="{StaticResource TextMuted}"
+                                           Margin="0,0,0,8"
+                                           TextWrapping="Wrap" />
+                                <TextBlock Text="{Binding ThemeEditor.PhotoBorderThickness, StringFormat=Keretvastagság: {0:0}}" FontSize="11" />
+                                <Slider Minimum="0" Maximum="12" TickFrequency="1" IsSnapToTickEnabled="True"
+                                        Value="{Binding ThemeEditor.PhotoBorderThickness}" Margin="0,0,0,8" />
+                                <TextBlock Text="{Binding ThemeEditor.PhotoCornerRadius, StringFormat=Lekerekítés: {0:0}}" FontSize="11" />
+                                <Slider Minimum="0" Maximum="36" TickFrequency="1" IsSnapToTickEnabled="True"
+                                        Value="{Binding ThemeEditor.PhotoCornerRadius}" Margin="0,0,0,8" />
+                                <TextBlock Text="Keret színe" FontSize="10" Margin="0,0,0,4" />
+                                <controls:HexColorPicker HexColor="{Binding ThemeEditor.PhotoBorderColorHex, Mode=TwoWay}" />
                             </StackPanel>
                         </ScrollViewer>
                     </Border>
@@ -562,7 +575,7 @@
                     </Border>
                 </Grid>
 
-                <!-- PREVIEW: interactive calendar page (drag / resize photos in place) -->
+                <!-- PREVIEW: all 12 months, scrollable -->
                 <Grid Visibility="{Binding IsPreview, Converter={StaticResource BoolToVis}}">
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto" />
@@ -570,17 +583,13 @@
                     </Grid.RowDefinitions>
 
                     <DockPanel Margin="0,0,0,12">
-                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Left">
-                            <Button Content="◀" Style="{StaticResource SecondaryButton}"
-                                    Command="{Binding PrevMonthCommand}" Width="40" Margin="0,0,8,0" />
-                            <ComboBox ItemsSource="{Binding MonthOptions}"
-                                      SelectedValuePath="Month"
-                                      SelectedValue="{Binding SelectedMonth}"
-                                      Width="180" VerticalAlignment="Center" />
-                            <Button Content="▶" Style="{StaticResource SecondaryButton}"
-                                    Command="{Binding NextMonthCommand}" Width="40" Margin="8,0,0,0" />
+                        <StackPanel>
+                            <TextBlock Text="Előnézet" FontFamily="Georgia" FontSize="24"
+                                       Foreground="{StaticResource TextPrimary}" />
+                            <TextBlock Text="Mind a 12 hónap egymás alatt. Húzza a fényképeket; a sarkok a méretezéshez."
+                                       Foreground="{StaticResource TextMuted}" Margin="0,4,0,0" TextWrapping="Wrap" />
                         </StackPanel>
-                        <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" HorizontalAlignment="Right">
+                        <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
                             <Button Content="Automatikus elrendezés"
                                     Style="{StaticResource SecondaryButton}"
                                     Command="{Binding ResetPhotoLayoutsCommand}"
@@ -592,23 +601,13 @@
                     </DockPanel>
 
                     <Border Grid.Row="1" Background="{StaticResource CardBg}" CornerRadius="8" Padding="8">
-                        <DockPanel>
-                            <TextBlock DockPanel.Dock="Top"
-                                       Text="Naptár oldal — húzza a fényképeket, sarkok a méretezéshez"
-                                       FontSize="12"
-                                       FontWeight="SemiBold"
-                                       Margin="2,0,2,6"
-                                       Foreground="{StaticResource TextMuted}" />
-                            <Border Background="#F0EBE3" CornerRadius="4" Padding="6">
-                                <ScrollViewer HorizontalScrollBarVisibility="Auto"
-                                              VerticalScrollBarVisibility="Auto">
-                                    <Viewbox Stretch="Uniform" HorizontalAlignment="Center" VerticalAlignment="Top">
-                                        <controls:CalendarPageControl x:Name="LivePreviewPage"
-                                                                      PhotoLayoutChanged="LivePreviewPage_PhotoLayoutChanged" />
-                                    </Viewbox>
-                                </ScrollViewer>
-                            </Border>
-                        </DockPanel>
+                        <ScrollViewer VerticalScrollBarVisibility="Auto"
+                                      HorizontalScrollBarVisibility="Disabled"
+                                      Padding="4">
+                            <StackPanel x:Name="PreviewPagesHost"
+                                        HorizontalAlignment="Center"
+                                        MaxWidth="780" />
+                        </ScrollViewer>
                     </Border>
                 </Grid>
 
@@ -617,7 +616,7 @@
                         Background="{StaticResource CardBg}" CornerRadius="8" Padding="28">
                     <StackPanel MaxWidth="640" HorizontalAlignment="Left">
                         <TextBlock Text="PDF export" FontFamily="Georgia" FontSize="28" />
-                        <TextBlock Text="Két PDF készül a kimeneti mappába: tiszta (rendelésszám.pdf) és vízjeles (rendelésszám_watermarked.pdf) ZATAI PIXEL logóval."
+                        <TextBlock Text="A kimeneti mappába kerül: tiszta PDF (rendelésszám.pdf) és egy hosszú, vízjeles előnézet kép (rendelésszám_preview.jpg) az összes oldallal. Ha van Drive kapcsolat, az előnézet a megrendelés mappájába is felkerül."
                                    Foreground="{StaticResource TextMuted}" Margin="0,6,0,20" TextWrapping="Wrap" />
 
                         <Border Background="#F3EEE6" CornerRadius="6" Padding="16" Margin="0,0,0,20">
@@ -632,7 +631,7 @@
 
                         <ProgressBar Height="10" Minimum="0" Maximum="100"
                                      Value="{Binding ExportProgress}" Margin="0,0,0,12" />
-                        <Button Content="PDF páros export (tiszta + vízjel)…"
+                        <Button Content="Export (tiszta PDF + vízjeles előnézet)…"
                                 Style="{StaticResource PrimaryButton}"
                                 HorizontalAlignment="Left"
                                 Command="{Binding ExportPdfCommand}"

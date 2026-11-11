@@ -3,7 +3,23 @@
   <head>
     <base target="_top" />
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title><?= config.ogTitle || 'Családi naptár rendelés' ?></title>
+    <meta name="description" content="<?= config.ogDescription || '' ?>" />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Családi naptár" />
+    <meta property="og:title" content="<?= config.ogTitle || 'Családi naptár rendelés' ?>" />
+    <meta property="og:description" content="<?= config.ogDescription || '' ?>" />
+    <meta property="og:url" content="<?!= config.ogUrl || '' ?>" />
+    <? if (config.ogImageUrl) { ?>
+    <meta property="og:image" content="<?!= config.ogImageUrl ?>" />
+    <meta property="og:image:secure_url" content="<?!= config.ogImageUrl ?>" />
+    <meta name="twitter:image" content="<?!= config.ogImageUrl ?>" />
+    <link rel="image_src" href="<?!= config.ogImageUrl ?>" />
+    <? } ?>
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="<?= config.ogTitle || 'Családi naptár rendelés' ?>" />
+    <meta name="twitter:description" content="<?= config.ogDescription || '' ?>" />
     <style>
       :root {
         --ink: #2a241c;
@@ -12,6 +28,7 @@
         --accent: #b4532a;
         --card: #fffaf4;
         --bg: #f7f1e8;
+        --nav-h: 0px;
       }
       * { box-sizing: border-box; }
       body {
@@ -144,6 +161,31 @@
         border: 0; border-radius: 999px; background: rgba(0,0,0,.65); color: #fff;
         width: 24px; height: 24px; cursor: pointer;
       }
+      .thumb.pending img { filter: brightness(0.72); }
+      .thumb-overlay {
+        position: absolute;
+        inset: 0;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        background: rgba(30, 20, 12, 0.28);
+        color: #fff;
+        font-size: 0.72rem;
+        font-weight: 600;
+        text-align: center;
+        padding: 6px;
+      }
+      .thumb-spinner {
+        width: 28px;
+        height: 28px;
+        border-radius: 50%;
+        border: 3px solid rgba(255,255,255,0.35);
+        border-top-color: #fff;
+        animation: thumb-spin 0.8s linear infinite;
+      }
+      @keyframes thumb-spin { to { transform: rotate(360deg); } }
       .event-row { display: grid; gap: 8px; margin-bottom: 10px; }
       @media (min-width: 640px) {
         .event-row { grid-template-columns: 160px 1fr auto; align-items: center; }
@@ -155,6 +197,110 @@
         color: #065f46;
         padding: 16px;
         border-radius: 16px;
+      }
+      .badge {
+        display: inline-block;
+        padding: 4px 10px;
+        border-radius: 999px;
+        font-size: 0.8rem;
+        background: #efe4d6;
+        color: var(--ink);
+        margin-left: 8px;
+      }
+      .badge.edit { background: #e7f5ea; color: #2f6b3a; }
+      .badge.ro { background: #fde8e4; color: #8a2a1c; }
+      .badge.office { background: #e8eef8; color: #1e3a5f; }
+      .price-box {
+        margin: 18px 0 4px;
+        padding: 14px 16px;
+        border-radius: 14px;
+        background: #f7f1ea;
+        border: 1px solid var(--line);
+      }
+      .price-box .price-label {
+        font-size: 0.85rem;
+        color: var(--muted);
+        margin: 0 0 4px;
+      }
+      .price-box .price-value {
+        margin: 0;
+        font-size: 1.55rem;
+        font-weight: 700;
+        color: var(--ink);
+        letter-spacing: 0.02em;
+      }
+      .price-box .price-note {
+        margin: 6px 0 0;
+        font-size: 0.85rem;
+        color: var(--muted);
+      }
+      .field-error {
+        border-color: #c62828 !important;
+        box-shadow: 0 0 0 2px rgba(198, 40, 40, 0.15);
+      }
+      .hint.warn { color: #b42318; }
+      .office-banner {
+        display: none;
+        margin: 12px 0 0;
+        padding: 6px 12px;
+        border-radius: 999px;
+        background: rgba(255,255,255,0.18);
+        border: 1px solid rgba(255,255,255,0.35);
+        font-size: 0.85rem;
+        font-weight: 600;
+      }
+      .office-banner.is-visible {
+        display: inline-block;
+      }
+      .meta { display: grid; gap: 8px 16px; grid-template-columns: 1fr; margin-top: 12px; }
+      @media (min-width: 640px) { .meta { grid-template-columns: 1fr 1fr; } }
+      .meta div {
+        padding: 10px 12px;
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        background: #fff;
+      }
+      .meta strong { display: block; font-size: 0.75rem; color: var(--muted); margin-bottom: 2px; }
+      .actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 14px; }
+      .preview-wrap {
+        border: 1px solid var(--line);
+        border-radius: 16px;
+        overflow: hidden;
+        background: #fff;
+        height: 70vh;
+      }
+      .preview-wrap img { width: 100%; height: auto; display: block; }
+      .preview-wrap iframe {
+        width: 100%;
+        height: 100%;
+        border: 0;
+        display: block;
+        background: #f7f1e8;
+      }
+      .empty {
+        padding: 28px 16px;
+        text-align: center;
+        color: var(--muted);
+        border: 1px dashed var(--line);
+        border-radius: 16px;
+        background: #fff;
+      }
+      .flash-ok {
+        display: none;
+        margin: 12px 0;
+        padding: 10px 12px;
+        border-radius: 12px;
+        background: #e7f5ea;
+        color: #2f6b3a;
+      }
+      .top-links { margin-top: 16px; font-size: 0.9rem; }
+      .top-links a { color: var(--accent); margin-right: 14px; }
+      .loading { padding: 40px 10px; text-align: center; color: var(--muted); }
+      body.page-lookup main { max-width: 520px; }
+      body.page-review main { max-width: 860px; }
+      input:disabled, select:disabled, textarea:disabled {
+        background: #f3eee6;
+        color: var(--muted);
       }
       .busy { opacity: 0.7; pointer-events: none; }
       /* Photo uploads must NOT lock the whole form — only mark the active month */
@@ -206,29 +352,815 @@
         white-space: nowrap;
         max-width: 70%;
       }
+      .mobile-only { display: none; }
+      .desktop-only { display: block; }
+      .step-progress {
+        display: none;
+        margin-bottom: 16px;
+      }
+      .step-progress-top {
+        display: flex;
+        justify-content: space-between;
+        align-items: baseline;
+        gap: 10px;
+        margin-bottom: 8px;
+      }
+      .step-progress-label { font-weight: 700; font-size: 1rem; }
+      .step-progress-count { color: var(--muted); font-size: 0.85rem; }
+      .step-progress-track {
+        height: 8px;
+        border-radius: 999px;
+        background: #e8ddd0;
+        overflow: hidden;
+      }
+      .step-progress-fill {
+        height: 100%;
+        width: 0%;
+        border-radius: 999px;
+        background: var(--accent);
+        transition: width 0.25s ease;
+      }
+      .photo-actions {
+        display: grid;
+        gap: 8px;
+        margin-top: 8px;
+      }
+      .photo-actions .btn { width: 100%; min-height: 48px; }
+
+      /*
+        Mobile layout must NOT depend on CSS viewport width alone:
+        Google Apps Script / Messenger iframes often report a “desktop” width
+        while the page is visually scaled on a phone.
+        body.is-mobile is set from UA + touch in JS.
+      */
+      html.is-mobile body,
+      body.is-mobile {
+        /* marker for nested selectors below */
+      }
+      html.is-mobile main,
+      body.is-mobile main {
+        max-width: 100%;
+        padding: 12px 12px calc(96px + env(safe-area-inset-bottom, 0px));
+      }
+      html.is-mobile .hero,
+      body.is-mobile .hero {
+        border-radius: 18px 18px 0 0;
+        padding: 18px 16px;
+      }
+      html.is-mobile .hero h1,
+      body.is-mobile .hero h1 { font-size: 1.35rem; }
+      html.is-mobile .hero p,
+      body.is-mobile .hero p { font-size: 0.92rem; }
+      html.is-mobile .panel,
+      body.is-mobile .panel {
+        border-radius: 0 0 18px 18px;
+        padding: 16px 14px 20px;
+      }
+      html.is-mobile .steps,
+      body.is-mobile .steps { display: none !important; }
+      html.is-mobile .step-progress,
+      body.is-mobile .step-progress { display: block !important; }
+      html.is-mobile .mobile-only,
+      body.is-mobile .mobile-only { display: block !important; }
+      html.is-mobile .desktop-only,
+      body.is-mobile .desktop-only { display: none !important; }
+      html.is-mobile .row.two,
+      body.is-mobile .row.two { grid-template-columns: 1fr !important; }
+      html.is-mobile input,
+      html.is-mobile select,
+      html.is-mobile textarea,
+      html.is-mobile .btn,
+      body.is-mobile input,
+      body.is-mobile select,
+      body.is-mobile textarea,
+      body.is-mobile .btn {
+        font-size: 16px !important; /* prevents iOS focus zoom */
+        min-height: 48px;
+      }
+      html.is-mobile input[type="checkbox"],
+      body.is-mobile input[type="checkbox"] {
+        min-height: 22px;
+        width: 22px;
+        height: 22px;
+      }
+      html.is-mobile .drop,
+      body.is-mobile .drop {
+        padding: 18px 12px;
+        min-height: 72px;
+        font-size: 0.95rem;
+      }
+      html.is-mobile .thumbs,
+      body.is-mobile .thumbs { grid-template-columns: repeat(2, 1fr) !important; gap: 10px; }
+      html.is-mobile .thumb button,
+      body.is-mobile .thumb button { width: 32px; height: 32px; font-size: 18px; }
+      html.is-mobile .event-row,
+      body.is-mobile .event-row { grid-template-columns: 1fr !important; }
+      html.is-mobile .nav,
+      body.is-mobile .nav {
+        position: fixed;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        z-index: 40;
+        margin: 0;
+        padding: 10px 12px calc(10px + env(safe-area-inset-bottom, 0px));
+        background: rgba(255, 250, 244, 0.97);
+        border-top: 1px solid var(--line);
+        display: grid !important;
+        grid-template-columns: 1fr 1.4fr;
+        gap: 10px;
+      }
+      html.is-mobile .nav .btn,
+      body.is-mobile .nav .btn { width: 100%; }
+      html.is-mobile .month,
+      body.is-mobile .month { padding: 14px; }
+
+      /* Narrow real viewports (Safari/Chrome without odd iframe width) */
+      @media (max-width: 720px) {
+        main { padding: 12px 12px 48px; }
+        .row.two { grid-template-columns: 1fr !important; }
+        .thumbs { grid-template-columns: repeat(2, 1fr) !important; }
+      }
     </style>
+    <script>
+      /* Early mobile class — Apps Script/Messenger iframes often report desktop width. */
+      (function () {
+        var ua = navigator.userAgent || '';
+        var mobile = /Android|iPhone|iPad|iPod|Mobile|FBAN|FBAV|Instagram/i.test(ua)
+          || Math.min(window.innerWidth || 9999, window.innerHeight || 9999) <= 720;
+        if (mobile) document.documentElement.classList.add('is-mobile');
+        document.addEventListener('DOMContentLoaded', function () {
+          document.body.classList.add(mobile ? 'is-mobile' : 'is-desktop');
+        });
+      })();
+    </script>
   </head>
   <body>
     <main>
       <div class="hero">
         <h1>Személyre szabott családi naptár rendelése</h1>
-        <p>Készíts egyedi családi naptárat a kedvenc fényképeiddel és fontos eseményeiddel.</p>
+        <p class="desktop-only">Készíts egyedi családi naptárat a kedvenc fényképeiddel és fontos eseményeiddel.</p>
+        <p class="mobile-only">5 rövid lépés · fényképek a telefonodról</p>
+        <p style="margin:12px 0 0;font-size:0.9rem"><a id="lookupHeroLink" href="?page=lookup" style="color:#fff8f1;text-decoration:underline">Meglévő rendelés megtekintése</a></p>
+        <p id="officeBanner" class="office-banner">Irodai megrendelés</p>
       </div>
       <div class="panel" id="app">
         <div class="steps" id="stepNav"></div>
+        <div class="step-progress" id="stepProgress" aria-live="polite"></div>
         <div class="error" id="error"></div>
         <div id="status"></div>
         <div id="view"></div>
-        <div class="nav" id="nav"></div>
       </div>
+      <div class="nav" id="nav"></div>
     </main>
 
     <script>
-      var STEPS = ['Személyes adatok', 'Naptár beállítások', 'Havi fényképek', 'Események', 'Összegzés'];
+      var CONFIG = <?!= JSON.stringify(config) ?>;
+      var WEB_APP_URL = (CONFIG && CONFIG.webAppUrl) || '';
+      var QUERY = {
+        page: (CONFIG && CONFIG.page) || 'customer',
+        orderId: (CONFIG && CONFIG.orderId) || '',
+        token: (CONFIG && CONFIG.token) || '',
+        office: !!(CONFIG && CONFIG.office)
+      };
+      // Fallback if opened with query on the iframe URL (ignore fbclid / ad tracking).
+      try {
+        var sp = new URLSearchParams(location.search || '');
+        ['fbclid', 'gclid', 'dclid', 'msclkid', 'twclid', 'mc_cid', 'mc_eid'].forEach(function (k) {
+          sp.delete(k);
+        });
+        Array.prototype.slice.call(sp.keys()).forEach(function (k) {
+          if (String(k).toLowerCase().indexOf('utm_') === 0) sp.delete(k);
+        });
+        if (sp.get('page')) QUERY.page = sp.get('page');
+        if (sp.get('orderId')) QUERY.orderId = sp.get('orderId');
+        if (sp.get('token')) QUERY.token = sp.get('token');
+        // Only officeorder=true turns office mode on; never inherit a stale true from elsewhere.
+        var officeOrderParam = (sp.get('officeorder') || '').toLowerCase();
+        QUERY.office =
+          officeOrderParam === 'true' ||
+          officeOrderParam === '1' ||
+          officeOrderParam === 'yes' ||
+          !!(CONFIG && CONFIG.office);
+      } catch (e) {
+        QUERY.office = !!(CONFIG && CONFIG.office);
+      }
+      var PAGE = (QUERY && QUERY.page) || 'customer';
+      var DIRECT_FROM_OFFICE = !!(QUERY && QUERY.office);
+
       var MONTHS = [
         'Január','Február','Március','Április','Május','Június',
         'Július','Augusztus','Szeptember','Október','November','December'
       ];
+
+      /* -------- Lookup / Review modes (same Customer.html file) -------- */
+      if (PAGE === 'lookup' || PAGE === 'review') {
+        document.body.classList.add('page-' + PAGE);
+        (function bootAltPage() {
+          var main = document.querySelector('main');
+          if (PAGE === 'lookup') {
+            main.innerHTML =
+              '<div class="hero"><h1>Rendelés keresése</h1>' +
+              '<p>Adja meg a rendelésszámot az áttekintő oldal megnyitásához.</p></div>' +
+              '<div class="panel">' +
+              '<label for="orderId">Rendelésszám</label>' +
+              '<input id="orderId" placeholder="pl. ORD-2027-143052" autocomplete="off" />' +
+              '<div class="hint">A számot a megrendelés visszaigazolásán találja.</div>' +
+              '<button type="button" class="btn btn-primary" id="openBtn" style="width:100%;margin-top:16px">Áttekintés megnyitása</button>' +
+              '<div class="error" id="error"></div>' +
+              '<div class="top-links"><a id="newOrderLink" href="?page=customer">Új megrendelés</a></div>' +
+              '</div>';
+
+            function showError(msg) {
+              var el = document.getElementById('error');
+              if (!msg) { el.style.display = 'none'; el.textContent = ''; return; }
+              el.style.display = 'block';
+              el.textContent = msg;
+            }
+            function reviewUrl(orderId) {
+              var base = WEB_APP_URL || (location.href.split('?')[0]);
+              return base + '?page=review&orderId=' + encodeURIComponent(orderId);
+            }
+            function openReview() {
+              var orderId = (document.getElementById('orderId').value || '').trim();
+              if (!orderId) { showError('Adja meg a rendelésszámot.'); return; }
+              showError('');
+              var btn = document.getElementById('openBtn');
+              btn.disabled = true;
+              btn.textContent = 'Keresés…';
+              google.script.run
+                .withSuccessHandler(function () { window.top.location.href = reviewUrl(orderId); })
+                .withFailureHandler(function (err) {
+                  btn.disabled = false;
+                  btn.textContent = 'Áttekintés megnyitása';
+                  showError(err && err.message ? err.message : String(err));
+                })
+                .getOrderReviewByOrderId(orderId);
+            }
+            document.getElementById('openBtn').onclick = openReview;
+            document.getElementById('orderId').addEventListener('keydown', function (e) {
+              if (e.key === 'Enter') openReview();
+            });
+            if (WEB_APP_URL) document.getElementById('newOrderLink').href = WEB_APP_URL + '?page=customer';
+            return;
+          }
+
+          /* review */
+          main.innerHTML =
+            '<div class="hero"><h1>Rendelés áttekintése</h1><p id="heroSub">Betöltés…</p></div>' +
+            '<div class="panel">' +
+            '<div id="status"></div>' +
+            '<div class="error" id="error"></div>' +
+            '<div class="flash-ok" id="ok"></div>' +
+            '<div id="view" class="loading">Megrendelés betöltése…</div>' +
+            '<div class="top-links">' +
+            '<a id="lookupLink" href="?page=lookup">Másik rendelés keresése</a>' +
+            '<a id="newOrderLink" href="?page=customer">Új megrendelés</a>' +
+            '</div></div>';
+
+          var state = {
+            order: null,
+            editable: false,
+            editToken: QUERY.token || '',
+            orderId: QUERY.orderId || '',
+            busy: false,
+            maxPhotos: 6,
+            progressKeep: false,
+            pendingPhotos: []
+          };
+          function $(id) { return document.getElementById(id); }
+          function escapeHtml(s) {
+            return String(s == null ? '' : s)
+              .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+              .replace(/"/g, '&quot;');
+          }
+          function escapeAttr(s) { return escapeHtml(s).replace(/'/g, '&#39;'); }
+          function showError(msg) {
+            var el = $('error');
+            if (!msg) { el.style.display = 'none'; el.textContent = ''; return; }
+            el.style.display = 'block'; el.textContent = msg; $('ok').style.display = 'none';
+          }
+          function showOk(msg) {
+            var el = $('ok');
+            if (!msg) { el.style.display = 'none'; el.textContent = ''; return; }
+            el.style.display = 'block'; el.textContent = msg; $('error').style.display = 'none';
+          }
+          function showProgress(opts) {
+            var el = $('status');
+            if (!el) return;
+            var pct = Math.max(0, Math.min(100, opts.percent || 0));
+            state.progressKeep = true;
+            el.style.display = 'block';
+            el.innerHTML =
+              '<div><strong>' + escapeHtml(opts.title || 'Folyamatban…') + '</strong></div>' +
+              '<div class="progress-wrap">' +
+              '<div class="progress-track"><div class="progress-fill" style="width:' + pct + '%"></div></div>' +
+              '<div class="progress-meta">' +
+              '<span class="progress-name">' + escapeHtml(opts.detail || '') + '</span>' +
+              '<span>' + escapeHtml(opts.counter || '') + '</span>' +
+              '</div></div>';
+          }
+          function hideProgress() {
+            var el = $('status');
+            if (!el) return;
+            state.progressKeep = false;
+            el.style.display = 'none';
+            el.innerHTML = '';
+          }
+          function run(fn, args, ok, fail) {
+            var runner = google.script.run
+              .withSuccessHandler(ok)
+              .withFailureHandler(function (err) {
+                if (fail) fail(err);
+                else showError(err && err.message ? err.message : String(err));
+              });
+            runner[fn].apply(runner, args);
+          }
+          function applyOrder(payload) {
+            hideProgress();
+            state.order = payload.order;
+            state.editable = !!payload.editable;
+            if (payload.editToken) state.editToken = payload.editToken;
+            if (payload.order && payload.order.orderId) state.orderId = payload.order.orderId;
+            renderReview();
+          }
+          function loadReview() {
+            showError('');
+            showProgress({
+              title: 'Megrendelés betöltése…',
+              detail: state.orderId || 'szerkesztő link',
+              counter: '',
+              percent: 15
+            });
+            if (state.editToken) { run('getOrderReviewByToken', [state.editToken], applyOrder, function (err) {
+              hideProgress();
+              showError(err && err.message ? err.message : String(err));
+            }); return; }
+            if (state.orderId) { run('getOrderReviewByOrderId', [state.orderId], applyOrder, function (err) {
+              hideProgress();
+              showError(err && err.message ? err.message : String(err));
+            }); return; }
+            hideProgress();
+            $('view').innerHTML =
+              '<div class="empty">Hiányzik a rendelésszám vagy a szerkesztő link.<br>' +
+              '<a href="?page=lookup">Keresés rendelésszám alapján</a></div>';
+          }
+          function photosForMonth(m) {
+            return (state.order.photos || []).filter(function (p) { return Number(p.month) === m; });
+          }
+          function pendingForMonth(m) {
+            return (state.pendingPhotos || []).filter(function (p) { return p.month === m; });
+          }
+          function makePendingId() {
+            return 'pending-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 8);
+          }
+          function addPendingFromFiles(month, files) {
+            if (!state.pendingPhotos) state.pendingPhotos = [];
+            return files.map(function (file) {
+              var previewUrl = '';
+              try { previewUrl = URL.createObjectURL(file); } catch (e) {}
+              var item = {
+                id: makePendingId(),
+                month: month,
+                name: String(file.name || 'photo.jpg'),
+                previewUrl: previewUrl,
+                phase: 'compressing'
+              };
+              state.pendingPhotos.push(item);
+              return item;
+            });
+          }
+          function setPendingPreview(pendingId, previewUrl) {
+            for (var i = 0; i < (state.pendingPhotos || []).length; i++) {
+              var p = state.pendingPhotos[i];
+              if (p.id !== pendingId) continue;
+              if (p.previewUrl && p.previewUrl.indexOf('blob:') === 0 && p.previewUrl !== previewUrl) {
+                try { URL.revokeObjectURL(p.previewUrl); } catch (e) {}
+              }
+              p.previewUrl = previewUrl;
+              return;
+            }
+          }
+          function setPendingPhase(pendingIds, phase) {
+            var set = {};
+            (pendingIds || []).forEach(function (id) { set[id] = true; });
+            (state.pendingPhotos || []).forEach(function (p) {
+              if (set[p.id]) p.phase = phase;
+            });
+          }
+          function clearPending(pendingIds) {
+            var set = {};
+            (pendingIds || []).forEach(function (id) { set[id] = true; });
+            state.pendingPhotos = (state.pendingPhotos || []).filter(function (p) {
+              if (!set[p.id]) return true;
+              if (p.previewUrl && p.previewUrl.indexOf('blob:') === 0) {
+                try { URL.revokeObjectURL(p.previewUrl); } catch (e) {}
+              }
+              return false;
+            });
+          }
+          function pendingThumbHtml(p) {
+            var img = p.previewUrl
+              ? '<img src="' + escapeAttr(p.previewUrl) + '" alt="' + escapeAttr(p.name || '') + '" />'
+              : '';
+            var label = p.phase === 'uploading' ? 'Feltöltés…' : 'Előkészítés…';
+            return '<div class="thumb pending" data-pending="' + escapeAttr(p.id) + '">' +
+              img +
+              '<div class="thumb-overlay"><div class="thumb-spinner" aria-hidden="true"></div><span>' +
+              label + '</span></div></div>';
+          }
+          function photoThumbHtml(p, canEdit) {
+            var src = p.thumbUrl || p.viewUrl || '';
+            var html = '<div class="thumb">';
+            if (src) html += '<img src="' + escapeAttr(src) + '" alt="" loading="lazy" />';
+            if (canEdit) html += '<button type="button" title="Törlés" data-del="' + escapeAttr(p.id) + '">×</button>';
+            html += '</div>';
+            return html;
+          }
+          function bindMonthDeletes(root) {
+            var scope = root || document;
+            var dels = scope.querySelectorAll('[data-del]');
+            for (var di = 0; di < dels.length; di++) {
+              dels[di].onclick = (function (id) {
+                return function () { deletePhoto(id); };
+              })(dels[di].getAttribute('data-del'));
+            }
+          }
+          function refreshMonthBlock(month) {
+            var block = document.querySelector('[data-month-block="' + month + '"]');
+            if (!block || !state.order) return;
+            var list = photosForMonth(month);
+            var pending = pendingForMonth(month);
+            var shown = list.length + pending.length;
+            var headCount = block.querySelector('[data-month-count]');
+            if (headCount) headCount.textContent = shown + ' / ' + state.maxPhotos;
+            var thumbs = block.querySelector('.thumbs');
+            if (thumbs) {
+              var canEdit = state.editable && !state.busy;
+              var html = '';
+              for (var pi = 0; pi < list.length; pi++) html += photoThumbHtml(list[pi], canEdit);
+              for (var qi = 0; qi < pending.length; qi++) html += pendingThumbHtml(pending[qi]);
+              thumbs.innerHTML = html;
+              if (canEdit) bindMonthDeletes(thumbs);
+            }
+            var addWrap = block.querySelector('[data-add-photos]');
+            if (addWrap) {
+              var room = state.maxPhotos - shown;
+              addWrap.style.display = (state.editable && !state.busy && room > 0) ? '' : 'none';
+            }
+          }
+          function mutate(nameToken, nameOrder, argsTail, progressTitle) {
+            if (!state.editable) { showError('A megrendelés már nem szerkeszthető.'); return; }
+            state.busy = true;
+            showOk('');
+            showError('');
+            showProgress({
+              title: progressTitle || 'Mentés…',
+              detail: 'Kérem várjon',
+              counter: '',
+              percent: 55
+            });
+            renderReview();
+            var fn = state.editToken ? nameToken : nameOrder;
+            var args = state.editToken
+              ? [state.editToken].concat(argsTail)
+              : [state.orderId].concat(argsTail);
+            run(fn, args, function (res) {
+              state.busy = false;
+              showProgress({
+                title: progressTitle || 'Mentés…',
+                detail: 'Kész',
+                counter: '',
+                percent: 100
+              });
+              if (res && res.order) {
+                state.order = res.order;
+                state.editable = res.order.status === 'NEW';
+              }
+              showOk('Mentve.');
+              renderReview();
+              setTimeout(hideProgress, 600);
+            }, function (err) {
+              state.busy = false;
+              hideProgress();
+              showError(err && err.message ? err.message : String(err));
+              renderReview();
+            });
+          }
+          function collectEvents() {
+            var rows = document.querySelectorAll('[data-event-row]');
+            var events = [];
+            for (var i = 0; i < rows.length; i++) {
+              var date = rows[i].querySelector('[data-event-date]').value;
+              var desc = rows[i].querySelector('[data-event-desc]').value.trim();
+              if (date && desc) events.push({ eventDate: date, description: desc });
+            }
+            return events;
+          }
+          function isRomanianPhone(raw) {
+            var cleaned = String(raw || '').replace(/[\s\-().]/g, '');
+            return (
+              /^\+40[237]\d{8}$/.test(cleaned) ||
+              /^0040[237]\d{8}$/.test(cleaned) ||
+              /^0[237]\d{8}$/.test(cleaned)
+            );
+          }
+          function saveDetails() {
+            var phone = $('phone').value.trim();
+            if (!isRomanianPhone(phone)) {
+              showError('Érvényes román telefonszám szükséges (pl. +40 712 345 678 vagy 0712 345 678).');
+              return;
+            }
+            mutate('updateOrder', 'updateOrderByOrderId', [{
+              fullName: $('fullName').value.trim(),
+              phone: phone,
+              email: $('email').value.trim(),
+              comments: $('comments').value.trim(),
+              calendarFormatPref: $('format').value,
+              events: collectEvents()
+            }], 'Adatok mentése…');
+          }
+          function deletePhoto(photoId) {
+            if (!confirm('Törli ezt a fényképet?')) return;
+            mutate('deletePhoto', 'deletePhotoByOrderId', [photoId], 'Fénykép törlése…');
+          }
+          function compressFile(file) {
+            return new Promise(function (resolve, reject) {
+              var url = URL.createObjectURL(file);
+              var img = new Image();
+              img.onload = function () {
+                try {
+                  var w = img.width, h = img.height, maxSide = 1600;
+                  if (Math.max(w, h) > maxSide) {
+                    if (w >= h) { h = Math.round(h * maxSide / w); w = maxSide; }
+                    else { w = Math.round(w * maxSide / h); h = maxSide; }
+                  }
+                  var canvas = document.createElement('canvas');
+                  canvas.width = w; canvas.height = h;
+                  canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+                  var dataUrl = canvas.toDataURL('image/jpeg', 0.82);
+                  URL.revokeObjectURL(url);
+                  resolve({
+                    name: (file.name || 'photo.jpg').replace(/\.\w+$/, '') + '.jpg',
+                    mimeType: 'image/jpeg',
+                    dataBase64: dataUrl.split(',')[1]
+                  });
+                } catch (e) { URL.revokeObjectURL(url); reject(e); }
+              };
+              img.onerror = function () {
+                URL.revokeObjectURL(url);
+                reject(new Error('Nem sikerült betölteni a képet.'));
+              };
+              img.src = url;
+            });
+          }
+          function mapPool(items, limit, worker) {
+            var results = new Array(items.length);
+            var next = 0;
+            var active = 0;
+            return new Promise(function (resolve, reject) {
+              function launch() {
+                while (active < limit && next < items.length) {
+                  (function (index) {
+                    active++;
+                    next++;
+                    Promise.resolve()
+                      .then(function () { return worker(items[index], index); })
+                      .then(function (value) {
+                        results[index] = value;
+                        active--;
+                        if (next >= items.length && active === 0) resolve(results);
+                        else launch();
+                      })
+                      .catch(reject);
+                  })(next);
+                }
+                if (items.length === 0) resolve(results);
+              }
+              launch();
+            });
+          }
+          function onPickFiles(month, input) {
+            var files = input.files;
+            if (!files || !files.length) return;
+            var remaining = state.maxPhotos - photosForMonth(month).length - pendingForMonth(month).length;
+            if (remaining <= 0) {
+              showError('Havonként maximum ' + state.maxPhotos + ' fénykép.');
+              input.value = '';
+              return;
+            }
+            var selected = Array.prototype.slice.call(files, 0, remaining);
+            input.value = '';
+            showOk('');
+            showError('');
+
+            var pendingItems = addPendingFromFiles(month, selected);
+            var pendingIds = pendingItems.map(function (p) { return p.id; });
+            refreshMonthBlock(month);
+
+            var total = selected.length;
+            var compressed = 0;
+            var monthLabel = MONTHS[month - 1];
+            showProgress({
+              title: 'Tömörítés: ' + monthLabel,
+              detail: 'Indítás…',
+              counter: '0 / ' + total,
+              percent: 5
+            });
+
+            mapPool(selected, 4, function (file, index) {
+              return compressFile(file).then(function (payload) {
+                compressed++;
+                var pending = pendingItems[index];
+                if (pending) {
+                  setPendingPreview(pending.id, 'data:image/jpeg;base64,' + payload.dataBase64);
+                  refreshMonthBlock(month);
+                }
+                showProgress({
+                  title: 'Tömörítés: ' + monthLabel,
+                  detail: payload.name,
+                  counter: compressed + ' / ' + total,
+                  percent: Math.round((compressed / total) * 45)
+                });
+                return payload;
+              });
+            })
+              .then(function (payloads) {
+                setPendingPhase(pendingIds, 'uploading');
+                refreshMonthBlock(month);
+                showProgress({
+                  title: 'Feltöltés: ' + monthLabel,
+                  detail: total + ' fénykép küldése…',
+                  counter: compressed + ' / ' + total,
+                  percent: 60
+                });
+                var fn = state.editToken ? 'uploadPhotosBatch' : 'uploadPhotosBatchByOrderId';
+                var args = state.editToken
+                  ? [state.editToken, month, payloads]
+                  : [state.orderId, month, payloads];
+                run(fn, args, function (res) {
+                  clearPending(pendingIds);
+                  if (res && res.order) {
+                    state.order = res.order;
+                    state.editable = res.order.status === 'NEW';
+                  }
+                  showProgress({
+                    title: 'Feltöltés: ' + monthLabel,
+                    detail: 'Kész',
+                    counter: '',
+                    percent: 100
+                  });
+                  showOk('Fényképek feltöltve.');
+                  refreshMonthBlock(month);
+                  setTimeout(hideProgress, 600);
+                }, function (err) {
+                  clearPending(pendingIds);
+                  hideProgress();
+                  showError(err && err.message ? err.message : String(err));
+                  refreshMonthBlock(month);
+                });
+              })
+              .catch(function (err) {
+                clearPending(pendingIds);
+                hideProgress();
+                showError(err && err.message ? err.message : String(err));
+                refreshMonthBlock(month);
+              });
+          }
+          function renderReview() {
+            var o = state.order;
+            if (!o) return;
+            var editable = state.editable && !state.busy;
+            $('heroSub').innerHTML =
+              escapeHtml(o.orderId) +
+              ' <span class="badge">' + escapeHtml(o.status || '') + '</span>' +
+              (o.directFromOffice ? ' <span class="badge office">Irodai</span>' : '') +
+              (state.editable
+                ? ' <span class="badge edit">Szerkeszthető</span>'
+                : ' <span class="badge ro">Csak olvasható</span>');
+
+            var html = '<h2>Megrendelő adatok</h2>';
+            html += state.editable
+              ? '<p class="hint">Amíg a státusz NEW, módosíthatja az adatokat és a fényképeket.</p>'
+              : '<p class="hint">A megrendelés státusza nem NEW — a tartalom nem módosítható.</p>';
+            html +=
+              '<label>Teljes név</label><input id="fullName" value="' + escapeAttr(o.fullName || '') + '"' + (editable ? '' : ' disabled') + ' />' +
+              '<label>Telefon</label><input id="phone" value="' + escapeAttr(o.phone || '') + '"' + (editable ? '' : ' disabled') + ' />' +
+              '<label>E-mail</label><input id="email" value="' + escapeAttr(o.email || '') + '"' + (editable ? '' : ' disabled') + ' />' +
+              '<label>Formátum</label><select id="format"' + (editable ? '' : ' disabled') + '>' +
+              '<option value="portrait"' + (o.calendarFormatPref === 'portrait' ? ' selected' : '') + '>Álló (portrait)</option>' +
+              '<option value="landscape"' + (o.calendarFormatPref === 'landscape' ? ' selected' : '') + '>Fekvő (landscape)</option>' +
+              '</select>' +
+              '<label>Megjegyzés</label><textarea id="comments" rows="3"' + (editable ? '' : ' disabled') + '>' +
+              escapeHtml(o.comments || '') + '</textarea>';
+            html += '<div class="meta">' +
+              '<div><strong>Év</strong>' + escapeHtml(o.calendarYear) + '</div>' +
+              '<div><strong>Frissítve</strong>' + escapeHtml(o.updatedAt || o.createdAt || '') + '</div></div>';
+
+            html += '<h2>Események</h2>';
+            var events = o.events || [];
+            if (!events.length && !editable) {
+              html += '<p class="hint">Nincs megadott esemény.</p>';
+            } else {
+              html += '<div id="eventList">';
+              for (var ei = 0; ei < Math.max(events.length, editable ? 1 : 0); ei++) {
+                var ev = events[ei] || { eventDate: '', description: '' };
+                html +=
+                  '<div data-event-row class="event-row">' +
+                  '<input data-event-date type="date" value="' + escapeAttr(ev.eventDate || '') + '"' + (editable ? '' : ' disabled') + ' />' +
+                  '<input data-event-desc placeholder="Leírás" value="' + escapeAttr(ev.description || '') + '"' + (editable ? '' : ' disabled') + ' />' +
+                  '</div>';
+              }
+              html += '</div>';
+              if (editable) html += '<button type="button" class="btn btn-secondary" id="addEventBtn">+ Esemény</button>';
+            }
+            if (editable) {
+              html += '<div class="actions"><button type="button" class="btn btn-primary" id="saveBtn">Adatok mentése</button></div>';
+            }
+
+            html += '<h2>Feltöltött fényképek</h2><p class="hint">Havonként legfeljebb ' + state.maxPhotos + ' kép.</p>';
+            for (var m = 1; m <= 12; m++) {
+              var list = photosForMonth(m);
+              var pending = pendingForMonth(m);
+              var shown = list.length + pending.length;
+              html +=
+                '<div class="month" data-month-block="' + m + '">' +
+                '<div class="month-head"><strong>' + MONTHS[m - 1] + '</strong>' +
+                '<span data-month-count>' + shown + ' / ' + state.maxPhotos + '</span></div>' +
+                '<div class="thumbs">';
+              for (var pi = 0; pi < list.length; pi++) {
+                html += photoThumbHtml(list[pi], editable);
+              }
+              for (var qi = 0; qi < pending.length; qi++) {
+                html += pendingThumbHtml(pending[qi]);
+              }
+              html += '</div>';
+              if (state.editable) {
+                html +=
+                  '<div class="actions" data-add-photos style="margin-top:10px' +
+                  (editable && shown < state.maxPhotos ? '' : ';display:none') + '">' +
+                  '<label class="btn btn-secondary" style="display:inline-block">Fénykép hozzáadása' +
+                  '<input type="file" accept="image/jpeg,image/png,image/webp" multiple hidden data-month="' + m + '" />' +
+                  '</label></div>';
+              }
+              html += '</div>';
+            }
+
+            html += '<h2>Termék előnézet</h2>' +
+              '<p class="hint">A vízjeles, összes oldalt tartalmazó előnézet a desktop export után jelenik meg.</p>';
+            if (o.hasPreview || o.previewUrl) {
+              var base = WEB_APP_URL || '';
+              try {
+                if (!base) base = (window.top && window.top.location && window.top.location.href || location.href).split('?')[0];
+              } catch (eBase) {
+                base = location.href.split('?')[0];
+              }
+              var serveUrl = base + '?page=previewServe&orderId=' + encodeURIComponent(state.orderId || o.orderId || '');
+              if (state.editToken) serveUrl += '&token=' + encodeURIComponent(state.editToken);
+              html +=
+                '<div class="preview-wrap">' +
+                '<iframe title="Naptár előnézet" src="' + escapeAttr(serveUrl) + '"></iframe>' +
+                '</div>' +
+                '<p class="hint" style="margin-top:8px"><a href="' + escapeAttr(serveUrl) + '" target="_blank">Előnézet megnyitása új lapon</a></p>';
+            } else {
+              html += '<div class="empty">Az előnézet még nem készült el. Amint a naptár elkészül és exportálásra kerül, itt fog megjelenni.</div>';
+            }
+
+            $('view').innerHTML = html;
+            if (editable) {
+              var saveBtn = $('saveBtn');
+              if (saveBtn) saveBtn.onclick = saveDetails;
+              var addEv = $('addEventBtn');
+              if (addEv) {
+                addEv.onclick = function () {
+                  var listEl = $('eventList');
+                  if (!listEl) return;
+                  var row = document.createElement('div');
+                  row.setAttribute('data-event-row', '');
+                  row.className = 'event-row';
+                  row.innerHTML = '<input data-event-date type="date" /><input data-event-desc placeholder="Leírás" />';
+                  listEl.appendChild(row);
+                };
+              }
+              bindMonthDeletes(document);
+              var inputs = document.querySelectorAll('input[type=file][data-month]');
+              for (var fi = 0; fi < inputs.length; fi++) {
+                inputs[fi].onchange = (function (inp) {
+                  return function () { onPickFiles(Number(inp.getAttribute('data-month')), inp); };
+                })(inputs[fi]);
+              }
+            }
+            if (WEB_APP_URL) {
+              $('lookupLink').href = WEB_APP_URL + '?page=lookup';
+              $('newOrderLink').href = WEB_APP_URL + '?page=customer';
+            }
+          }
+          loadReview();
+        })();
+      } else {
+
+      var STEPS = ['Személyes adatok', 'Naptár beállítások', 'Havi fényképek', 'Események', 'Összegzés'];
+      var CALENDAR_PRICE_RON = 60;
       var state = {
         step: 0,
         busy: false,
@@ -236,6 +1168,7 @@
         orderId: null,
         driveFolderUrl: null,
         maxPhotos: 6,
+        directFromOffice: DIRECT_FROM_OFFICE,
         draft: {
           fullName: '',
           phone: '',
@@ -251,17 +1184,48 @@
         done: false,
         /** photoId -> data:image/... preview URL (from local compression) */
         previewById: {},
+        /** Local placeholders shown with spinner until Drive upload finishes */
+        pendingPhotos: [],
         orderCreating: false,
         orderCreateError: null,
         /** callbacks waiting for editToken */
         orderWaiters: [],
-        uploadConcurrency: 3,
+        /** Parallel client-side JPEG compressions (safe — no Apps Script lock) */
+        compressConcurrency: 4,
         /** month -> { total, done, label } for multi-month parallel uploads */
         uploadJobs: {},
-        activeUploadMonths: 0
+        activeUploadMonths: 0,
+        /** Serialize script.run uploads — parallel batches caused Lock timeout */
+        _uploadQueue: [],
+        _uploadQueueBusy: false
       };
 
       function $(id) { return document.getElementById(id); }
+
+      /** Same URL — prefer UA/touch; Apps Script iframes often lie about width. */
+      function detectMobile() {
+        var ua = navigator.userAgent || '';
+        var mobileUa = /Android|iPhone|iPad|iPod|Mobile|IEMobile|Opera Mini|webOS|BlackBerry|FBAN|FBAV|Instagram|Line\//i.test(ua);
+        var narrow = false;
+        try {
+          narrow = window.matchMedia('(max-width: 720px)').matches;
+        } catch (e) {}
+        var shortSide = Math.min(window.innerWidth || 9999, window.innerHeight || 9999);
+        var touch = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
+        var coarse = false;
+        try {
+          coarse = window.matchMedia('(pointer: coarse)').matches;
+        } catch (e2) {}
+        // Messenger / GAS can report a wide iframe on a phone — trust UA first.
+        return mobileUa || narrow || shortSide <= 720 || (touch && coarse && shortSide < 1024);
+      }
+
+      function applyDeviceMode() {
+        var mobile = detectMobile();
+        document.body.classList.toggle('is-mobile', mobile);
+        document.body.classList.toggle('is-desktop', !mobile);
+        state.isMobile = mobile;
+      }
 
       function showError(msg) {
         var el = $('error');
@@ -362,7 +1326,8 @@
             calendarFormatPref: state.draft.calendarFormatPref,
             comments: state.draft.comments,
             privacyConsent: false,
-            events: state.draft.events
+            events: state.draft.events,
+            directFromOffice: !!state.directFromOffice
           });
       }
 
@@ -389,16 +1354,43 @@
         });
       }
 
+      /** Same rules as Code.gs isRomanianPhone_ */
+      function isRomanianPhone(raw) {
+        var cleaned = String(raw || '').replace(/[\s\-().]/g, '');
+        return (
+          /^\+40[237]\d{8}$/.test(cleaned) ||
+          /^0040[237]\d{8}$/.test(cleaned) ||
+          /^0[237]\d{8}$/.test(cleaned)
+        );
+      }
+
       function canNext() {
-        if (state.step === 0) return !!(state.draft.fullName.trim() && state.draft.phone.trim());
+        if (state.step === 0) {
+          return !!(state.draft.fullName.trim() && isRomanianPhone(state.draft.phone));
+        }
         if (state.step === 1) return !!(state.draft.calendarYear && state.draft.calendarFormatPref);
         if (state.step === 4) return !!state.draft.privacyConsent;
         return true;
       }
 
+      function collectDraftEvents() {
+        var events = [];
+        var list = state.draft.events || [];
+        for (var i = 0; i < list.length; i++) {
+          var date = list[i].eventDate;
+          var desc = String(list[i].description || '').trim();
+          if (date && desc) events.push({ eventDate: date, description: desc });
+        }
+        return events;
+      }
+
       function goNext() {
         if (!canNext()) {
-          showError('Kérjük, töltse ki a kötelező mezőket.');
+          if (state.step === 0 && state.draft.fullName.trim() && !isRomanianPhone(state.draft.phone)) {
+            showError('Érvényes román telefonszám szükséges (pl. +40 712 345 678 vagy 0712 345 678).');
+          } else {
+            showError('Kérjük, töltse ki a kötelező mezőket.');
+          }
           return;
         }
         // Enter photo step immediately; create order asynchronously in background.
@@ -406,6 +1398,21 @@
           state.step = 2;
           render();
           startOrderCreationAsync();
+          return;
+        }
+        // Persist events as soon as the customer leaves that step (before finalize),
+        // so Drive sync / desktop import already sees them.
+        if (state.step === 3) {
+          ensureOrder(function (token) {
+            var events = collectDraftEvents();
+            state.draft.events = events;
+            setStatus('Események mentése…');
+            run('updateOrder', [token, { events: events }], function () {
+              setStatus('');
+              state.step = 4;
+              render();
+            });
+          });
           return;
         }
         if (state.step === 4) {
@@ -425,6 +1432,8 @@
 
       function finalize() {
         ensureOrder(function (token) {
+          var events = collectDraftEvents();
+          state.draft.events = events;
           setStatus('Véglegesítés…');
           run('finalizeOrder', [token, {
             fullName: state.draft.fullName,
@@ -433,11 +1442,12 @@
             calendarYear: state.draft.calendarYear,
             calendarFormatPref: state.draft.calendarFormatPref,
             comments: state.draft.comments,
-            events: state.draft.events,
+            events: events,
             privacyConsent: true
           }], function (res) {
             state.done = true;
             state.draft.photos = res.order.photos || [];
+            if (res.order && res.order.events) state.draft.events = res.order.events;
             render();
           });
         });
@@ -445,6 +1455,74 @@
 
       function photosForMonth(m) {
         return (state.draft.photos || []).filter(function (p) { return p.month === m; });
+      }
+
+      function pendingForMonth(m) {
+        return (state.pendingPhotos || []).filter(function (p) { return p.month === m; });
+      }
+
+      function makePendingId() {
+        return 'pending-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 8);
+      }
+
+      function addPendingFromFiles(month, files) {
+        if (!state.pendingPhotos) state.pendingPhotos = [];
+        return files.map(function (file) {
+          var previewUrl = '';
+          try { previewUrl = URL.createObjectURL(file); } catch (e) {}
+          var item = {
+            id: makePendingId(),
+            month: month,
+            name: String(file.name || 'photo.jpg'),
+            previewUrl: previewUrl,
+            phase: 'compressing'
+          };
+          state.pendingPhotos.push(item);
+          return item;
+        });
+      }
+
+      function setPendingPreview(pendingId, previewUrl) {
+        for (var i = 0; i < (state.pendingPhotos || []).length; i++) {
+          var p = state.pendingPhotos[i];
+          if (p.id !== pendingId) continue;
+          if (p.previewUrl && p.previewUrl.indexOf('blob:') === 0 && p.previewUrl !== previewUrl) {
+            try { URL.revokeObjectURL(p.previewUrl); } catch (e) {}
+          }
+          p.previewUrl = previewUrl;
+          return;
+        }
+      }
+
+      function setPendingPhase(pendingIds, phase) {
+        var set = {};
+        (pendingIds || []).forEach(function (id) { set[id] = true; });
+        (state.pendingPhotos || []).forEach(function (p) {
+          if (set[p.id]) p.phase = phase;
+        });
+      }
+
+      function clearPending(pendingIds) {
+        var set = {};
+        (pendingIds || []).forEach(function (id) { set[id] = true; });
+        state.pendingPhotos = (state.pendingPhotos || []).filter(function (p) {
+          if (!set[p.id]) return true;
+          if (p.previewUrl && p.previewUrl.indexOf('blob:') === 0) {
+            try { URL.revokeObjectURL(p.previewUrl); } catch (e) {}
+          }
+          return false;
+        });
+      }
+
+      function pendingThumbHtml(p) {
+        var img = p.previewUrl
+          ? '<img src="' + escapeAttr(p.previewUrl) + '" alt="' + escapeAttr(p.name || '') + '" />'
+          : '';
+        var label = p.phase === 'uploading' ? 'Feltöltés…' : 'Előkészítés…';
+        return '<div class="thumb pending" data-pending="' + escapeAttr(p.id) + '">' +
+          img +
+          '<div class="thumb-overlay"><div class="thumb-spinner" aria-hidden="true"></div><span>' +
+          label + '</span></div></div>';
       }
 
       /** Resize/compress in the browser so Drive uploads stay small and fast. */
@@ -542,6 +1620,34 @@
         });
       }
 
+      /** Run async tasks with a concurrency limit; preserves result order. */
+      function mapPool(items, limit, worker) {
+        var results = new Array(items.length);
+        var next = 0;
+        var active = 0;
+        return new Promise(function (resolve, reject) {
+          function launch() {
+            while (active < limit && next < items.length) {
+              (function (index) {
+                active++;
+                next++;
+                Promise.resolve()
+                  .then(function () { return worker(items[index], index); })
+                  .then(function (value) {
+                    results[index] = value;
+                    active--;
+                    if (next >= items.length && active === 0) resolve(results);
+                    else launch();
+                  })
+                  .catch(reject);
+              })(next);
+            }
+            if (items.length === 0) resolve(results);
+          }
+          launch();
+        });
+      }
+
       function prepareAndUpload(month, files) {
         showError('');
         // Do NOT lock the whole page — other months stay selectable.
@@ -551,41 +1657,48 @@
         state.activeUploadMonths = (state.activeUploadMonths || 0) + 1;
         markMonthUploading(month, true);
 
+        var pendingItems = addPendingFromFiles(month, files);
+        var pendingIds = pendingItems.map(function (p) { return p.id; });
+        refreshMonthThumbsOnly(month);
+
         var total = files.length;
         var compressed = 0;
+        var compressLimit = state.compressConcurrency || 4;
         state.uploadJobs[month] = {
           total: total,
           done: 0,
           label: 'tömörítés',
-          phase: 'compress'
+          phase: 'compress',
+          pendingIds: pendingIds
         };
         refreshUploadProgressUi();
 
-        Promise.all(files.map(function (file) {
+        mapPool(files, compressLimit, function (file, index) {
           return compressFile(file).then(function (payload) {
             compressed++;
+            var pending = pendingItems[index];
+            if (pending) {
+              setPendingPreview(pending.id, 'data:image/jpeg;base64,' + payload.dataBase64);
+              payload._pendingId = pending.id;
+            }
             if (state.uploadJobs[month]) {
               state.uploadJobs[month].label = payload.name;
-              state.uploadJobs[month].done = compressed * 0.45; // visual weight during compress
+              state.uploadJobs[month].done = compressed * 0.45;
               state.uploadJobs[month].total = total;
             }
-            // Recompute display with compress as first half — use dedicated compress progress per job
-            showProgress({
-              title: 'Tömörítés: ' + MONTHS[month - 1] + (state.editToken ? '' : ' (megrendelés a háttérben)'),
-              detail: payload.name + ' — más hónapokra kattinthat közben',
-              counter: compressed + ' / ' + total,
-              percent: (compressed / total) * 40
-            });
-            // Merge with other months' upload progress if any
+            refreshMonthThumbsOnly(month);
             refreshUploadProgressUiSoft(month, compressed, total, payload.name, true);
             return payload;
           });
-        }))
+        })
           .then(function (payloads) {
+            setPendingPhase(pendingIds, 'uploading');
+            refreshMonthThumbsOnly(month);
             if (state.uploadJobs[month]) {
               state.uploadJobs[month].label = 'várakozás a megrendelésre…';
               state.uploadJobs[month].done = 0;
               state.uploadJobs[month].phase = 'wait';
+              state.uploadJobs[month].pendingIds = pendingIds;
             }
             refreshUploadProgressUi();
             whenOrderReady(function (err, token) {
@@ -593,7 +1706,7 @@
                 failMonthUpload(month, files.length, err);
                 return;
               }
-              uploadParallel(token, month, payloads);
+              uploadParallel(token, month, payloads, pendingIds);
             });
           })
           .catch(function (err) {
@@ -638,98 +1751,91 @@
       }
 
       function failMonthUpload(month, count, msg) {
+        var pendingIds = (state.uploadJobs[month] && state.uploadJobs[month].pendingIds) || [];
+        clearPending(pendingIds);
         state._inflightByMonth[month] = Math.max(0, (state._inflightByMonth[month] || 0) - count);
         delete state.uploadJobs[month];
         state.activeUploadMonths = Math.max(0, (state.activeUploadMonths || 0) - 1);
         markMonthUploading(month, false);
+        refreshMonthThumbsOnly(month);
         if (state.activeUploadMonths === 0) hideProgress();
         else refreshUploadProgressUi();
         showError(msg);
       }
 
-      function uploadParallel(token, month, payloads) {
+      /** One Apps Script upload at a time (shared script lock); compress stays parallel. */
+      function enqueueUpload(job) {
+        if (!state._uploadQueue) state._uploadQueue = [];
+        state._uploadQueue.push(job);
+        pumpUploadQueue();
+      }
+
+      function pumpUploadQueue() {
+        if (state._uploadQueueBusy) return;
+        var next = (state._uploadQueue || []).shift();
+        if (!next) return;
+        state._uploadQueueBusy = true;
+        next(function () {
+          state._uploadQueueBusy = false;
+          pumpUploadQueue();
+        });
+      }
+
+      function uploadParallel(token, month, payloads, pendingIds) {
         var total = payloads.length;
-        var completed = 0;
-        var started = 0;
-        var inflight = 0;
-        var failed = false;
-        var concurrency = state.uploadConcurrency || 3;
         var previewByName = {};
         payloads.forEach(function (p) {
           previewByName[p.name] = 'data:image/jpeg;base64,' + p.dataBase64;
         });
+        pendingIds = pendingIds || (state.uploadJobs[month] && state.uploadJobs[month].pendingIds) || [];
+        setPendingPhase(pendingIds, 'uploading');
+        refreshMonthThumbsOnly(month);
 
         state.uploadJobs[month] = {
           total: total,
           done: 0,
-          label: payloads[0] ? payloads[0].name : '',
-          phase: 'upload'
+          label: 'sorban…',
+          phase: 'upload',
+          pendingIds: pendingIds
         };
         refreshUploadProgressUi();
 
-        function attachPreviews(beforeIds) {
-          (state.draft.photos || []).forEach(function (p) {
-            if (beforeIds[p.id]) return;
-            if (previewByName[p.originalFilename] && !state.previewById[p.id]) {
-              state.previewById[p.id] = previewByName[p.originalFilename];
-            }
-          });
-        }
-
-        function finishOk() {
-          state._inflightByMonth[month] = Math.max(0, (state._inflightByMonth[month] || 0) - total);
-          delete state.uploadJobs[month];
-          state.activeUploadMonths = Math.max(0, (state.activeUploadMonths || 0) - 1);
-          markMonthUploading(month, false);
-          refreshMonthThumbsOnly(month);
-          if (state.activeUploadMonths === 0) {
-            hideProgress();
-          } else {
-            refreshUploadProgressUi();
+        enqueueUpload(function (done) {
+          if (state.uploadJobs[month]) {
+            state.uploadJobs[month].label =
+              total === 1 ? payloads[0].name : (total + ' fénykép egyben');
+            state.uploadJobs[month].pendingIds = pendingIds;
           }
-        }
+          refreshUploadProgressUi();
 
-        function finishErr(msg) {
-          failed = true;
-          failMonthUpload(month, total, msg);
-          refreshMonthThumbsOnly(month);
-        }
+          var beforeIds = {};
+          (state.draft.photos || []).forEach(function (p) { beforeIds[p.id] = true; });
 
-        function pump() {
-          if (failed) return;
-          while (inflight < concurrency && started < total) {
-            (function (payload) {
-              started++;
-              inflight++;
-              var beforeIds = {};
-              (state.draft.photos || []).forEach(function (p) { beforeIds[p.id] = true; });
-              if (state.uploadJobs[month]) state.uploadJobs[month].label = payload.name;
-              refreshUploadProgressUi();
-              google.script.run
-                .withSuccessHandler(function (res) {
-                  inflight--;
-                  completed++;
-                  state.draft.photos = res.order.photos || [];
-                  attachPreviews(beforeIds);
-                  if (state.uploadJobs[month]) {
-                    state.uploadJobs[month].done = completed;
-                    state.uploadJobs[month].label = payload.name + ' kész';
-                  }
-                  refreshUploadProgressUi();
-                  refreshMonthThumbsOnly(month);
-                  if (completed >= total) finishOk();
-                  else pump();
-                })
-                .withFailureHandler(function (err) {
-                  inflight--;
-                  finishErr(err && err.message ? err.message : String(err));
-                })
-                .uploadPhoto(token, month, payload);
-            })(payloads[started]);
-          }
-        }
-
-        pump();
+          google.script.run
+            .withSuccessHandler(function (res) {
+              state.draft.photos = res.order.photos || [];
+              (state.draft.photos || []).forEach(function (p) {
+                if (beforeIds[p.id]) return;
+                if (previewByName[p.originalFilename] && !state.previewById[p.id]) {
+                  state.previewById[p.id] = previewByName[p.originalFilename];
+                }
+              });
+              clearPending(pendingIds);
+              state._inflightByMonth[month] = Math.max(0, (state._inflightByMonth[month] || 0) - total);
+              delete state.uploadJobs[month];
+              state.activeUploadMonths = Math.max(0, (state.activeUploadMonths || 0) - 1);
+              markMonthUploading(month, false);
+              refreshMonthThumbsOnly(month);
+              if (state.activeUploadMonths === 0) hideProgress();
+              else refreshUploadProgressUi();
+              done();
+            })
+            .withFailureHandler(function (err) {
+              failMonthUpload(month, total, err && err.message ? err.message : String(err));
+              done();
+            })
+            .uploadPhotosBatch(token, month, payloads);
+        });
       }
 
       function refreshMonthThumbsOnly(month) {
@@ -744,11 +1850,15 @@
           return;
         }
         var list = photosForMonth(month);
+        var pending = pendingForMonth(month);
+        var shown = list.length + pending.length;
         var head = block.querySelector('.month-head span');
-        if (head) head.textContent = list.length + ' / ' + state.maxPhotos + ' (1–' + state.maxPhotos + ')';
+        if (head) head.textContent = shown + ' / ' + state.maxPhotos;
         var thumbs = block.querySelector('.thumbs');
         if (thumbs) {
-          thumbs.innerHTML = list.map(function (p) { return thumbHtml(p); }).join('');
+          thumbs.innerHTML =
+            list.map(function (p) { return thumbHtml(p); }).join('') +
+            pending.map(function (p) { return pendingThumbHtml(p); }).join('');
           var dels = thumbs.querySelectorAll('[data-del]');
           for (var j = 0; j < dels.length; j++) {
             dels[j].onclick = function () { removePhoto(this.getAttribute('data-del')); };
@@ -793,6 +1903,18 @@
             }
           };
         }
+
+        // Compact mobile progress (same step data, friendlier on phone)
+        var prog = $('stepProgress');
+        if (prog) {
+          var pct = ((state.step + (state.done ? 1 : 0)) / STEPS.length) * 100;
+          prog.innerHTML =
+            '<div class="step-progress-top">' +
+            '<div class="step-progress-label">' + escapeHtml(STEPS[Math.min(state.step, STEPS.length - 1)]) + '</div>' +
+            '<div class="step-progress-count">' + (state.step + 1) + ' / ' + STEPS.length + '</div>' +
+            '</div>' +
+            '<div class="step-progress-track"><div class="step-progress-fill" style="width:' + pct + '%"></div></div>';
+        }
       }
 
       function renderNav() {
@@ -814,13 +1936,21 @@
         showError('');
         renderStepNav();
         if (state.done) {
+          var reviewHref = (WEB_APP_URL || '') + '?page=review&token=' + encodeURIComponent(state.editToken || '') +
+            '&orderId=' + encodeURIComponent(state.orderId || '');
+          if (!WEB_APP_URL) {
+            reviewHref = '?page=review&token=' + encodeURIComponent(state.editToken || '') +
+              '&orderId=' + encodeURIComponent(state.orderId || '');
+          }
           $('view').innerHTML =
             '<div class="ok">' +
             '<h2>Köszönjük! Megrendelés rögzítve.</h2>' +
-            '<p><strong>Rendelés azonosító:</strong> ' + escapeHtml(state.orderId) + '</p>' +
-            '<p>A fényképek a Google Drive <strong>Naptar</strong> mappába kerültek.</p>' +
-            (state.driveFolderUrl ? '<p><a href="' + escapeHtml(state.driveFolderUrl) + '" target="_blank">Drive mappa megnyitása</a></p>' : '') +
-            '<p class="hint">Szerkesztő token (őrizze meg):<br><code style="word-break:break-all">' + escapeHtml(state.editToken || '') + '</code></p>' +
+            '<p><strong>Rendelés azonosító:</strong> ' + escapeHtml(state.orderId) +
+            (state.directFromOffice ? ' <span class="badge office">Irodai</span>' : '') + '</p>' +
+            '<p>Amíg a státusz <strong>NEW</strong>, a fényképeket és az adatokat az áttekintő oldalon módosíthatja.</p>' +
+            '<p style="margin-top:16px"><a class="btn btn-primary" style="display:inline-block;text-decoration:none" href="' +
+            escapeAttr(reviewHref) + '">Rendelés áttekintése / szerkesztése</a></p>' +
+            '<p class="hint" style="margin-top:16px">Később a rendelésszámmal is megnyitható: <a href="?page=lookup">Rendelés keresése</a></p>' +
             '</div>';
           renderNav();
           return;
@@ -832,8 +1962,8 @@
           html =
             '<div class="row two">' +
             '<div><label>Teljes név *</label><input id="fullName" value="' + escapeAttr(d.fullName) + '" /></div>' +
-            '<div><label>Telefonszám (România) *</label><input id="phone" value="' + escapeAttr(d.phone) + '" placeholder="+40 712 345 678" />' +
-            '<div class="hint">Csak román szám: +40… vagy 07… / 02… / 03…</div></div>' +
+            '<div><label>Telefonszám (România) *</label><input id="phone" value="' + escapeAttr(d.phone) + '" placeholder="+40 712 345 678" inputmode="tel" autocomplete="tel" />' +
+            '<div id="phoneHint" class="hint">Csak román szám: +40… vagy 07… / 02… / 03…</div></div>' +
             '<div><label>E-mail (opcionális)</label><input id="email" type="email" value="' + escapeAttr(d.email) + '" /></div>' +
             '<div><label>Megjegyzés</label><textarea id="comments" rows="3">' + escapeHtml(d.comments) + '</textarea></div>' +
             '</div>';
@@ -847,18 +1977,42 @@
             '<label>Formátum *</label><select id="format">' +
             '<option value="portrait"' + (d.calendarFormatPref === 'portrait' ? ' selected' : '') + '>Álló (portrait) – A4</option>' +
             '<option value="landscape"' + (d.calendarFormatPref === 'landscape' ? ' selected' : '') + '>Fekvő (landscape) – A4</option>' +
-            '</select>';
+            '</select>' +
+            '<div class="price-box" aria-live="polite">' +
+            '<p class="price-label">Ár a jelenlegi beállításokkal</p>' +
+            '<p class="price-value">' + CALENDAR_PRICE_RON + ' RON</p>' +
+            '<p class="price-note">12 oldalas A4 nyomtatott naptár · álló vagy fekvő</p>' +
+            '</div>';
         } else if (state.step === 2) {
-          html = '<p class="hint">Havonként 1–' + state.maxPhotos + ' fénykép (JPG/PNG/WebP). Nem kötelező minden hónap.</p>';
+          html = state.isMobile
+            ? '<p class="hint">Havonként 1–' + state.maxPhotos + ' fénykép. Koppints a kamerára vagy a galériára.</p>'
+            : '<p class="hint">Havonként 1–' + state.maxPhotos + ' fénykép (JPG/PNG/WebP). Nem kötelező minden hónap.</p>';
           for (var m = 1; m <= 12; m++) {
             var list = photosForMonth(m);
-            html += '<div class="month"><div class="month-head"><strong>' + MONTHS[m - 1] + '</strong><span>' + list.length + ' / ' + state.maxPhotos + ' (1–' + state.maxPhotos + ')</span></div>';
-            html += '<label class="drop">Húzza ide vagy válasszon 1–' + Math.max(1, state.maxPhotos - list.length) + ' fényképet' +
-              '<input type="file" accept="image/jpeg,image/png,image/webp" multiple style="display:none" data-month="' + m + '"' +
-              (list.length >= state.maxPhotos ? ' disabled' : '') + ' /></label>';
+            var pending = pendingForMonth(m);
+            var shown = list.length + pending.length;
+            var remaining = Math.max(0, state.maxPhotos - shown);
+            var disabled = remaining <= 0 ? ' disabled' : '';
+            html += '<div class="month"><div class="month-head"><strong>' + MONTHS[m - 1] + '</strong><span>' + shown + ' / ' + state.maxPhotos + '</span></div>';
+            if (state.isMobile) {
+              html +=
+                '<div class="photo-actions">' +
+                '<button type="button" class="btn btn-primary" data-pick="gallery" data-month="' + m + '"' + disabled + '>Galéria (max ' + Math.max(1, remaining) + ')</button>' +
+                '<button type="button" class="btn btn-secondary" data-pick="camera" data-month="' + m + '"' + disabled + '>Kamera</button>' +
+                '<input type="file" accept="image/jpeg,image/png,image/webp" multiple style="display:none" data-month="' + m + '" data-mode="gallery"' + disabled + ' />' +
+                '<input type="file" accept="image/*" capture="environment" style="display:none" data-month="' + m + '" data-mode="camera"' + disabled + ' />' +
+                '</div>';
+            } else {
+              html += '<label class="drop">Húzza ide vagy válasszon 1–' + Math.max(1, remaining) + ' fényképet' +
+                '<input type="file" accept="image/jpeg,image/png,image/webp" multiple style="display:none" data-month="' + m + '"' +
+                disabled + ' /></label>';
+            }
             html += '<div class="thumbs">';
             for (var p = 0; p < list.length; p++) {
               html += thumbHtml(list[p]);
+            }
+            for (var q = 0; q < pending.length; q++) {
+              html += pendingThumbHtml(pending[q]);
             }
             html += '</div></div>';
           }
@@ -876,6 +2030,8 @@
             (d.photos || []).map(function (ph) { return thumbHtml(ph); }).join('') +
             '</div>' +
             '<div><strong>Események:</strong> ' + (d.events || []).length + '</div>' +
+            '<div><strong>Ár:</strong> ' + CALENDAR_PRICE_RON + ' RON</div>' +
+            (state.directFromOffice ? '<div><strong>Forrás:</strong> Irodai megrendelés</div>' : '') +
             '</div>' +
             '<label class="consent" for="consent">' +
             '<input id="consent" type="checkbox"' + (d.privacyConsent ? ' checked' : '') + ' />' +
@@ -904,11 +2060,29 @@
           };
         }
         bind('fullName', 'fullName');
-        bind('phone', 'phone');
         bind('email', 'email');
         bind('comments', 'comments');
         bind('year', 'calendarYear', true);
         bind('format', 'calendarFormatPref');
+        var phoneEl = $('phone');
+        if (phoneEl) {
+          function refreshPhoneValidity() {
+            d.phone = phoneEl.value;
+            var hasValue = !!(d.phone || '').trim();
+            var ok = isRomanianPhone(d.phone);
+            phoneEl.classList.toggle('field-error', hasValue && !ok);
+            var hint = $('phoneHint');
+            if (hint) {
+              hint.classList.toggle('warn', hasValue && !ok);
+              hint.textContent = hasValue && !ok
+                ? 'Érvénytelen szám. Használjon pl. +40 712 345 678 vagy 0712 345 678 formátumot.'
+                : 'Csak román szám: +40… vagy 07… / 02… / 03…';
+            }
+            renderNav();
+          }
+          phoneEl.oninput = phoneEl.onchange = refreshPhoneValidity;
+          refreshPhoneValidity();
+        }
         var consent = $('consent');
         if (consent) {
           consent.onchange = function () {
@@ -923,6 +2097,17 @@
             onPickFiles(Number(this.getAttribute('data-month')), this);
           };
           thisLabelClick(fileInputs[i]);
+        }
+        var pickBtns = document.querySelectorAll('[data-pick]');
+        for (var pb = 0; pb < pickBtns.length; pb++) {
+          pickBtns[pb].onclick = function () {
+            var month = this.getAttribute('data-month');
+            var mode = this.getAttribute('data-pick');
+            var input = document.querySelector(
+              'input[type=file][data-month="' + month + '"][data-mode="' + mode + '"]'
+            );
+            if (input && !input.disabled) input.click();
+          };
         }
         var dels = document.querySelectorAll('[data-del]');
         for (var j = 0; j < dels.length; j++) {
@@ -986,7 +2171,23 @@
         return escapeHtml(s).replace(/"/g, '&quot;');
       }
 
+      applyDeviceMode();
+      if (WEB_APP_URL) {
+        var lookupHero = document.getElementById('lookupHeroLink');
+        if (lookupHero) lookupHero.href = WEB_APP_URL + '?page=lookup';
+      }
+      var officeBanner = document.getElementById('officeBanner');
+      if (officeBanner) {
+        officeBanner.classList.toggle('is-visible', !!state.directFromOffice);
+      }
+      window.addEventListener('resize', function () {
+        var was = state.isMobile;
+        applyDeviceMode();
+        if (was !== state.isMobile) render();
+      });
       render();
+
+      } /* end customer wizard branch */
     </script>
   </body>
 </html>

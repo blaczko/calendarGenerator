@@ -26,12 +26,12 @@ public sealed class OrderProjectLoader
         project.Events.Clear();
         foreach (var ev in order.Events)
         {
-            if (!DateTime.TryParse(ev.EventDate, out var dt)) continue;
             if (string.IsNullOrWhiteSpace(ev.Description)) continue;
+            if (!TryParseEventDate(ev.EventDate, out var month, out var day)) continue;
             project.Events.Add(new CustomEvent
             {
-                Month = dt.Month,
-                Day = dt.Day,
+                Month = month,
+                Day = day,
                 Description = ev.Description.Trim()
             });
         }
@@ -61,6 +61,63 @@ public sealed class OrderProjectLoader
                 });
             }
         }
+    }
+
+    /// <summary>
+    /// Accepts ISO yyyy-MM-dd (web form), culture-specific dates, or MM-dd fragments.
+    /// </summary>
+    internal static bool TryParseEventDate(string? raw, out int month, out int day)
+    {
+        month = 0;
+        day = 0;
+        if (string.IsNullOrWhiteSpace(raw))
+            return false;
+
+        var text = raw.Trim();
+        if (DateTime.TryParseExact(
+                text,
+                ["yyyy-MM-dd", "yyyy.MM.dd", "yyyy/MM/dd", "dd.MM.yyyy", "dd/MM/yyyy"],
+                System.Globalization.CultureInfo.InvariantCulture,
+                System.Globalization.DateTimeStyles.None,
+                out var exact))
+        {
+            month = exact.Month;
+            day = exact.Day;
+            return true;
+        }
+
+        if (DateTime.TryParse(
+                text,
+                System.Globalization.CultureInfo.InvariantCulture,
+                System.Globalization.DateTimeStyles.AllowWhiteSpaces,
+                out var inv))
+        {
+            month = inv.Month;
+            day = inv.Day;
+            return true;
+        }
+
+        if (DateTime.TryParse(text, out var local))
+        {
+            month = local.Month;
+            day = local.Day;
+            return true;
+        }
+
+        // month/day only (rare)
+        var parts = text.Split(['-', '.', '/'], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        if (parts.Length == 2
+            && int.TryParse(parts[0], out var m)
+            && int.TryParse(parts[1], out var d)
+            && m is >= 1 and <= 12
+            && d is >= 1 and <= 31)
+        {
+            month = m;
+            day = d;
+            return true;
+        }
+
+        return false;
     }
 
     private static double TryReadAspectRatio(string path)

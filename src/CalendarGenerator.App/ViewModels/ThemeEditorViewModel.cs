@@ -212,6 +212,44 @@ public partial class ThemeEditorViewModel : ObservableObject
         set { if (_theme.AccentHex == value) return; _theme.AccentHex = value ?? "#C9A88A"; OnPropertyChanged(); _onChanged(); }
     }
 
+    public double PhotoBorderThickness
+    {
+        get => _theme.PhotoBorderThickness;
+        set
+        {
+            var v = Math.Clamp(value, 0, 16);
+            if (Math.Abs(_theme.PhotoBorderThickness - v) < 0.01) return;
+            _theme.PhotoBorderThickness = v;
+            OnPropertyChanged();
+            _onChanged();
+        }
+    }
+
+    public string PhotoBorderColorHex
+    {
+        get => _theme.PhotoBorderColorHex;
+        set
+        {
+            if (_theme.PhotoBorderColorHex == value) return;
+            _theme.PhotoBorderColorHex = value ?? "#FFFFFF";
+            OnPropertyChanged();
+            _onChanged();
+        }
+    }
+
+    public double PhotoCornerRadius
+    {
+        get => _theme.PhotoCornerRadius;
+        set
+        {
+            var v = Math.Clamp(value, 0, 48);
+            if (Math.Abs(_theme.PhotoCornerRadius - v) < 0.01) return;
+            _theme.PhotoCornerRadius = v;
+            OnPropertyChanged();
+            _onChanged();
+        }
+    }
+
     public string? BackgroundImagePath =>
         !string.IsNullOrWhiteSpace(_theme.ProjectCopyPath) ? _theme.ProjectCopyPath : _theme.BackgroundImagePath;
 

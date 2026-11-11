@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="hu">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <!--
+    Optional hosted fallback for Facebook / WhatsApp previews.
+    Apps Script URLs are often wrapped in an iframe, so crawlers may miss OG tags.
+    Host this file on GitHub Pages / Netlify / any static host, then post THAT URL.
+
+    1) Replace WEB_APP_URL with your Apps Script /exec URL
+    2) Replace IMAGE_URL with either:
+       - https://drive.google.com/uc?export=view&id=YOUR_FILE_ID
+       - or WEB_APP_URL?page=shareImage
+  -->
+  <title>Családi naptár rendelés</title>
+  <meta name="description" content="Személyre szabott, nyomtatott 12 oldalas A4 naptár a saját fényképeiddel — 60 RON." />
+  <meta property="og:type" content="website" />
+  <meta property="og:site_name" content="Családi naptár" />
+  <meta property="og:title" content="Családi naptár rendelés" />
+  <meta property="og:description" content="Személyre szabott, nyomtatott 12 oldalas A4 naptár a saját fényképeiddel — 60 RON." />
+  <meta property="og:url" content="https://YOUR_HOST/social-share.html" />
+  <meta property="og:image" content="https://drive.google.com/uc?export=view&id=YOUR_FILE_ID" />
+  <meta property="og:image:secure_url" content="https://drive.google.com/uc?export=view&id=YOUR_FILE_ID" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="Családi naptár rendelés" />
+  <meta name="twitter:description" content="Személyre szabott, nyomtatott 12 oldalas A4 naptár a saját fényképeiddel — 60 RON." />
+  <meta name="twitter:image" content="https://drive.google.com/uc?export=view&id=YOUR_FILE_ID" />
+  <style>
+    body { margin: 0; font-family: Georgia, serif; background: linear-gradient(160deg, #f7f1e8, #efe4d6); color: #2a241c; }
+    .wrap { max-width: 640px; margin: 0 auto; padding: 28px 16px 48px; }
+    .card { background: #fffaf4; border: 1px solid #e4d8c8; border-radius: 24px; overflow: hidden; box-shadow: 0 18px 50px rgba(80,50,20,.08); }
+    .hero { background: linear-gradient(120deg, #3d2a1f, #8a3c1c 45%, #c47a3a); color: #fff8f1; padding: 28px 24px; }
+    .hero h1 { margin: 0; font-size: 1.8rem; line-height: 1.2; }
+    .hero p { margin: 10px 0 0; opacity: .92; }
+    .body { padding: 22px 24px 28px; }
+    .price { font-size: 1.6rem; font-weight: 700; margin: 0 0 8px; }
+    .muted { color: #6b6258; margin: 0 0 18px; }
+    .btn { display: inline-block; background: #b4532a; color: #fff; text-decoration: none; padding: 12px 18px; border-radius: 12px; font-weight: 700; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="card">
+      <div class="hero">
+        <h1>Családi naptár rendelés</h1>
+        <p>Személyre szabott, nyomtatott 12 oldalas A4 naptár a saját fényképeiddel.</p>
+      </div>
+      <div class="body">
+        <p class="price">60 RON</p>
+        <p class="muted">Álló vagy fekvő · névnapok · saját események</p>
+        <a class="btn" href="WEB_APP_URL">Megrendelés indítása</a>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

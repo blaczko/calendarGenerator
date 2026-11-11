@@ -22,6 +22,10 @@ public partial class PhotoCollageEditor : UserControl
     private readonly Dictionary<Guid, PhotoVisual> _visuals = new();
     private IList<PhotoItem> _photos = new List<PhotoItem>();
 
+    private double _frameBorderThickness = 2;
+    private string _frameBorderColorHex = "#FFFFFF";
+    private double _frameCornerRadius = 2;
+
     private PhotoVisual? _active;
     private DragMode _mode;
     private Point _startMouse;
@@ -42,6 +46,16 @@ public partial class PhotoCollageEditor : UserControl
     {
         get => (Guid?)GetValue(SelectedPhotoIdProperty);
         set => SetValue(SelectedPhotoIdProperty, value);
+    }
+
+    public void SetFrameStyle(double borderThickness, string? borderColorHex, double cornerRadius)
+    {
+        _frameBorderThickness = Math.Max(0, borderThickness);
+        _frameBorderColorHex = string.IsNullOrWhiteSpace(borderColorHex) ? "#FFFFFF" : borderColorHex;
+        _frameCornerRadius = Math.Max(0, cornerRadius);
+
+        foreach (var visual in _visuals.Values)
+            ApplyFrameChrome(visual.Frame);
     }
 
     public void SetPhotos(IList<PhotoItem> photos, Guid? selectedId = null)
@@ -114,6 +128,7 @@ public partial class PhotoCollageEditor : UserControl
         if (_photos.Count == 0)
         {
             Hint.Visibility = Visibility.Visible;
+            GapLayer.Children.Clear();
             return;
         }
 
@@ -148,10 +163,6 @@ public partial class PhotoCollageEditor : UserControl
 
         var frame = new Border
         {
-            BorderBrush = Brushes.White,
-            BorderThickness = new Thickness(2),
-            Background = Brushes.White,
-            CornerRadius = new CornerRadius(2),
             ClipToBounds = true,
             Cursor = Cursors.SizeAll,
             Effect = new System.Windows.Media.Effects.DropShadowEffect
@@ -162,6 +173,7 @@ public partial class PhotoCollageEditor : UserControl
                 Color = Colors.Black
             }
         };
+        ApplyFrameChrome(frame);
 
         var image = new Image { Stretch = Stretch.Uniform, IsHitTestVisible = false };
         var loaded = PhotoImageLoader.Load(photo, decodePixelWidth: 640);
@@ -263,6 +275,145 @@ public partial class PhotoCollageEditor : UserControl
 
         foreach (var visual in _visuals.Values)
             ApplyBounds(visual, visual.Bounds, preserveAspect: true);
+
+        UpdateGapGuides();
+    }
+
+    private void UpdateGapGuides()
+    {
+        GapLayer.Children.Clear();
+        GapLayer.Width = Surface.ActualWidth;
+        GapLayer.Height = Surface.ActualHeight;
+
+        if (_visuals.Count < 2 || Surface.ActualWidth < 8 || Surface.ActualHeight < 8)
+            return;
+
+        var rects = _visuals.Values
+            .Select(v => new Rect(
+                v.Bounds.X * Surface.ActualWidth,
+                v.Bounds.Y * Surface.ActualHeight,
+                Math.Max(24, v.Bounds.Width * Surface.ActualWidth),
+                Math.Max(24, v.Bounds.Height * Surface.ActualHeight)))
+            .ToList();
+
+        var guideBrush = (Brush)new BrushConverter().ConvertFromString("#C47A3A")!;
+        const double maxGapFraction = 0.45;
+
+        for (var i = 0; i < rects.Count; i++)
+        {
+            for (var j = i + 1; j < rects.Count; j++)
+            {
+                var a = rects[i];
+                var b = rects[j];
+
+                // Horizontal gap (side-by-side, vertically overlapping)
+                var yOverlap = Math.Min(a.Bottom, b.Bottom) - Math.Max(a.Top, b.Top);
+                if (yOverlap > 8)
+                {
+                    var left = a.Right <= b.Left ? a : b;
+                    var right = a.Right <= b.Left ? b : a;
+                    var gap = right.Left - left.Right;
+                    if (gap > 0.5 && gap < Surface.ActualWidth * maxGapFraction)
+                    {
+                        var midY = (Math.Max(a.Top, b.Top) + Math.Min(a.Bottom, b.Bottom)) / 2;
+                        DrawHorizontalGap(left.Right, right.Left, midY, gap, guideBrush);
+                    }
+                }
+
+                // Vertical gap (stacked, horizontally overlapping)
+                var xOverlap = Math.Min(a.Right, b.Right) - Math.Max(a.Left, b.Left);
+                if (xOverlap > 8)
+                {
+                    var top = a.Bottom <= b.Top ? a : b;
+                    var bottom = a.Bottom <= b.Top ? b : a;
+                    var gap = bottom.Top - top.Bottom;
+                    if (gap > 0.5 && gap < Surface.ActualHeight * maxGapFraction)
+                    {
+                        var midX = (Math.Max(a.Left, b.Left) + Math.Min(a.Right, b.Right)) / 2;
+                        DrawVerticalGap(top.Bottom, bottom.Top, midX, gap, guideBrush);
+                    }
+                }
+            }
+        }
+    }
+
+    private void DrawHorizontalGap(double x1, double x2, double y, double gapPx, Brush brush)
+    {
+        const double tick = 5;
+        GapLayer.Children.Add(new Line
+        {
+            X1 = x1, Y1 = y, X2 = x2, Y2 = y,
+            Stroke = brush, StrokeThickness = 1.2,
+            StrokeDashArray = new DoubleCollection { 3, 2 }
+        });
+        GapLayer.Children.Add(new Line
+        {
+            X1 = x1, Y1 = y - tick, X2 = x1, Y2 = y + tick,
+            Stroke = brush, StrokeThickness = 1.4
+        });
+        GapLayer.Children.Add(new Line
+        {
+            X1 = x2, Y1 = y - tick, X2 = x2, Y2 = y + tick,
+            Stroke = brush, StrokeThickness = 1.4
+        });
+
+        var label = CreateGapLabel(FormatGapMm(gapPx));
+        label.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
+        Canvas.SetLeft(label, (x1 + x2) / 2 - label.DesiredSize.Width / 2);
+        Canvas.SetTop(label, y - label.DesiredSize.Height - 2);
+        GapLayer.Children.Add(label);
+    }
+
+    private void DrawVerticalGap(double y1, double y2, double x, double gapPx, Brush brush)
+    {
+        const double tick = 5;
+        GapLayer.Children.Add(new Line
+        {
+            X1 = x, Y1 = y1, X2 = x, Y2 = y2,
+            Stroke = brush, StrokeThickness = 1.2,
+            StrokeDashArray = new DoubleCollection { 3, 2 }
+        });
+        GapLayer.Children.Add(new Line
+        {
+            X1 = x - tick, Y1 = y1, X2 = x + tick, Y2 = y1,
+            Stroke = brush, StrokeThickness = 1.4
+        });
+        GapLayer.Children.Add(new Line
+        {
+            X1 = x - tick, Y1 = y2, X2 = x + tick, Y2 = y2,
+            Stroke = brush, StrokeThickness = 1.4
+        });
+
+        var label = CreateGapLabel(FormatGapMm(gapPx));
+        label.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
+        Canvas.SetLeft(label, x + 6);
+        Canvas.SetTop(label, (y1 + y2) / 2 - label.DesiredSize.Height / 2);
+        GapLayer.Children.Add(label);
+    }
+
+    private static Border CreateGapLabel(string text) =>
+        new()
+        {
+            Background = new SolidColorBrush(Color.FromArgb(220, 255, 252, 248)),
+            BorderBrush = (Brush)new BrushConverter().ConvertFromString("#C47A3A")!,
+            BorderThickness = new Thickness(1),
+            CornerRadius = new CornerRadius(3),
+            Padding = new Thickness(4, 1, 4, 1),
+            Child = new TextBlock
+            {
+                Text = text,
+                FontSize = 10,
+                FontWeight = FontWeights.SemiBold,
+                Foreground = (Brush)new BrushConverter().ConvertFromString("#8B5E3C")!,
+                FontFamily = new FontFamily("Segoe UI")
+            }
+        };
+
+    private static string FormatGapMm(double gapDip)
+    {
+        // WPF DIP: 96 units ≈ 1 inch
+        var mm = gapDip / 96.0 * 25.4;
+        return mm < 10 ? $"{mm:0.0} mm" : $"{mm:0} mm";
     }
 
     private void ApplyBounds(PhotoVisual visual, CollageRect bounds, bool preserveAspect)
@@ -369,6 +520,7 @@ public partial class PhotoCollageEditor : UserControl
 
         // Live-save position/size onto the model so preview/PDF stay in sync.
         _collage.ApplyManualLayout(_active.Photo, _active.Bounds);
+        UpdateGapGuides();
     }
 
     private void Surface_MouseLeftButtonUp(object sender, MouseButtonEventArgs e)
@@ -379,6 +531,7 @@ public partial class PhotoCollageEditor : UserControl
         _collage.ApplyManualLayout(_active.Photo, _active.Bounds);
         UpdateSelectionChrome();
         _active = null;
+        UpdateGapGuides();
         LayoutChanged?.Invoke(this, EventArgs.Empty);
         e.Handled = true;
     }
@@ -439,6 +592,37 @@ public partial class PhotoCollageEditor : UserControl
             visual.MoveBadge.Visibility = selected ? Visibility.Visible : Visibility.Collapsed;
             Panel.SetZIndex(visual.Root, selected ? 20 : 1);
         }
+    }
+
+    private void ApplyFrameChrome(Border frame)
+    {
+        var brush = BrushFromHex(_frameBorderColorHex, Colors.White);
+        frame.BorderBrush = brush;
+        frame.Background = brush;
+        frame.BorderThickness = new Thickness(_frameBorderThickness);
+        frame.CornerRadius = new CornerRadius(_frameCornerRadius);
+    }
+
+    private static SolidColorBrush BrushFromHex(string? hex, Color fallback)
+    {
+        try
+        {
+            if (!string.IsNullOrWhiteSpace(hex))
+            {
+                var parsed = (Color)ColorConverter.ConvertFromString(hex)!;
+                var brush = new SolidColorBrush(parsed);
+                brush.Freeze();
+                return brush;
+            }
+        }
+        catch
+        {
+            // fall through
+        }
+
+        var fallbackBrush = new SolidColorBrush(fallback);
+        fallbackBrush.Freeze();
+        return fallbackBrush;
     }
 
     private enum DragMode

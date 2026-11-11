@@ -33,6 +33,9 @@ public sealed class TemplateDefinition
     public string WeekendFillHex { get; set; } = "#66F3EEE6";
     public string HeaderFillHex { get; set; } = "#AAEFE8DE";
     public string CalendarPanelHex { get; set; } = "#E6FFFAFA";
+    public double PhotoBorderThickness { get; set; } = 2;
+    public string PhotoBorderColorHex { get; set; } = "#FFFFFF";
+    public double PhotoCornerRadius { get; set; } = 2;
 
     public bool IsCustom => Style == TemplateStyle.CustomImage
                             || !string.IsNullOrWhiteSpace(BackgroundImagePath);

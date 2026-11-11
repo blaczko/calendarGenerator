@@ -1,0 +1,529 @@
+<!DOCTYPE html>
+<!-- Optional standalone copy. Production uses Customer.html (?page=review). -->
+<html>
+  <head>
+    <base target="_top" />
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <style>
+      :root {
+        --ink: #2a241c;
+        --muted: #6b6258;
+        --line: #e4d8c8;
+        --accent: #b4532a;
+        --card: #fffaf4;
+        --ok: #2f6b3a;
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        font-family: Georgia, "Times New Roman", serif;
+        background: linear-gradient(160deg, #f7f1e8, #efe4d6 40%, #f8f3eb);
+        color: var(--ink);
+      }
+      main { max-width: 860px; margin: 0 auto; padding: 20px 16px 64px; }
+      .hero {
+        background: linear-gradient(120deg, #3d2a1f, #8a3c1c 45%, #c47a3a);
+        color: #fff8f1;
+        border-radius: 24px 24px 0 0;
+        padding: 24px;
+      }
+      .hero h1 { margin: 0; font-size: clamp(1.35rem, 4vw, 1.85rem); }
+      .hero p { margin: 8px 0 0; opacity: 0.92; }
+      .panel {
+        background: var(--card);
+        border: 1px solid var(--line);
+        border-top: 0;
+        border-radius: 0 0 24px 24px;
+        padding: 20px;
+        box-shadow: 0 18px 50px rgba(80, 50, 20, 0.08);
+      }
+      .badge {
+        display: inline-block;
+        padding: 4px 10px;
+        border-radius: 999px;
+        font-size: 0.8rem;
+        background: #efe4d6;
+        color: var(--ink);
+        margin-left: 8px;
+      }
+      .badge.edit { background: #e7f5ea; color: var(--ok); }
+      .badge.ro { background: #fde8e4; color: #8a2a1c; }
+      h2 { margin: 28px 0 10px; font-size: 1.2rem; }
+      .hint { color: var(--muted); font-size: 0.85rem; margin: 0 0 12px; }
+      .meta {
+        display: grid;
+        gap: 8px 16px;
+        grid-template-columns: 1fr;
+      }
+      @media (min-width: 640px) { .meta { grid-template-columns: 1fr 1fr; } }
+      .meta div {
+        padding: 10px 12px;
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        background: #fff;
+      }
+      .meta strong { display: block; font-size: 0.75rem; color: var(--muted); margin-bottom: 2px; }
+      label { display: block; margin: 12px 0 4px; font-weight: 600; }
+      input, select, textarea {
+        width: 100%;
+        padding: 10px 12px;
+        border-radius: 12px;
+        border: 1px solid var(--line);
+        font: inherit;
+        background: #fff;
+      }
+      input:disabled, select:disabled, textarea:disabled {
+        background: #f3eee6;
+        color: var(--muted);
+      }
+      .btn {
+        border: 0;
+        border-radius: 999px;
+        padding: 10px 16px;
+        font: inherit;
+        cursor: pointer;
+      }
+      .btn-primary { background: var(--accent); color: #fff; }
+      .btn-secondary { background: #efe4d6; color: var(--ink); }
+      .btn-danger { background: #f3d0c8; color: #8a2a1c; }
+      .btn:disabled { opacity: 0.5; cursor: default; }
+      .actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 14px; }
+      .month {
+        border: 1px solid var(--line);
+        border-radius: 16px;
+        padding: 12px;
+        margin-bottom: 12px;
+        background: #fff;
+      }
+      .month-head {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 10px;
+        font-weight: 600;
+      }
+      .thumbs {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(96px, 1fr));
+        gap: 8px;
+      }
+      .thumb {
+        position: relative;
+        border-radius: 10px;
+        overflow: hidden;
+        background: #efe4d6;
+        aspect-ratio: 1;
+      }
+      .thumb img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        display: block;
+      }
+      .thumb button {
+        position: absolute;
+        top: 4px;
+        right: 4px;
+        border: 0;
+        border-radius: 999px;
+        width: 28px;
+        height: 28px;
+        background: rgba(42, 36, 28, 0.72);
+        color: #fff;
+        cursor: pointer;
+        font-size: 14px;
+        line-height: 1;
+      }
+      .preview-wrap {
+        border: 1px solid var(--line);
+        border-radius: 16px;
+        overflow: hidden;
+        background: #fff;
+        max-height: 70vh;
+        overflow-y: auto;
+      }
+      .preview-wrap img {
+        width: 100%;
+        height: auto;
+        display: block;
+      }
+      .empty {
+        padding: 28px 16px;
+        text-align: center;
+        color: var(--muted);
+        border: 1px dashed var(--line);
+        border-radius: 16px;
+        background: #fff;
+      }
+      .error {
+        display: none;
+        margin: 12px 0;
+        padding: 10px 12px;
+        border-radius: 12px;
+        background: #fde8e4;
+        color: #8a2a1c;
+      }
+      .ok {
+        display: none;
+        margin: 12px 0;
+        padding: 10px 12px;
+        border-radius: 12px;
+        background: #e7f5ea;
+        color: var(--ok);
+      }
+      .events li { margin: 6px 0; }
+      .top-links { margin-top: 16px; font-size: 0.9rem; }
+      .top-links a { color: var(--accent); margin-right: 14px; }
+      .loading { padding: 40px 10px; text-align: center; color: var(--muted); }
+    </style>
+  </head>
+  <body>
+    <main>
+      <div class="hero">
+        <h1>Rendelés áttekintése</h1>
+        <p id="heroSub">Betöltés…</p>
+      </div>
+      <div class="panel">
+        <div class="error" id="error"></div>
+        <div class="ok" id="ok"></div>
+        <div id="view" class="loading">Megrendelés betöltése…</div>
+        <div class="top-links">
+          <a id="lookupLink" href="?page=lookup">Másik rendelés keresése</a>
+          <a id="newOrderLink" href="?page=customer">Új megrendelés</a>
+        </div>
+      </div>
+    </main>
+    <script>
+      var MONTHS = [
+        'Január','Február','Március','Április','Május','Június',
+        'Július','Augusztus','Szeptember','Október','November','December'
+      ];
+      var WEB_APP_URL = <?!= JSON.stringify(webAppUrl || '') ?>;
+      var QUERY = <?!= JSON.stringify(query || {}) ?>;
+      var state = {
+        order: null,
+        editable: false,
+        editToken: QUERY.token || '',
+        orderId: QUERY.orderId || '',
+        busy: false,
+        maxPhotos: 6
+      };
+
+      function $(id) { return document.getElementById(id); }
+      function escapeHtml(s) {
+        return String(s == null ? '' : s)
+          .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+          .replace(/"/g, '&quot;');
+      }
+      function escapeAttr(s) { return escapeHtml(s).replace(/'/g, '&#39;'); }
+
+      function showError(msg) {
+        var el = $('error');
+        if (!msg) { el.style.display = 'none'; el.textContent = ''; return; }
+        el.style.display = 'block';
+        el.textContent = msg;
+        $('ok').style.display = 'none';
+      }
+      function showOk(msg) {
+        var el = $('ok');
+        if (!msg) { el.style.display = 'none'; el.textContent = ''; return; }
+        el.style.display = 'block';
+        el.textContent = msg;
+        $('error').style.display = 'none';
+      }
+
+      function run(fn, args, ok, fail) {
+        var runner = google.script.run
+          .withSuccessHandler(ok)
+          .withFailureHandler(function (err) {
+            if (fail) fail(err);
+            else showError(err && err.message ? err.message : String(err));
+          });
+        runner[fn].apply(runner, args);
+      }
+
+      function applyOrder(payload) {
+        state.order = payload.order;
+        state.editable = !!payload.editable;
+        if (payload.editToken) state.editToken = payload.editToken;
+        if (payload.order && payload.order.orderId) state.orderId = payload.order.orderId;
+        render();
+      }
+
+      function load() {
+        showError('');
+        if (state.editToken) {
+          run('getOrderReviewByToken', [state.editToken], applyOrder);
+          return;
+        }
+        if (state.orderId) {
+          run('getOrderReviewByOrderId', [state.orderId], applyOrder);
+          return;
+        }
+        $('view').innerHTML =
+          '<div class="empty">Hiányzik a rendelésszám vagy a szerkesztő link.<br>' +
+          '<a href="?page=lookup">Keresés rendelésszám alapján</a></div>';
+      }
+
+      function photosForMonth(m) {
+        return (state.order.photos || []).filter(function (p) { return Number(p.month) === m; });
+      }
+
+      function mutate(nameToken, nameOrder, argsTail, onOk) {
+        if (!state.editable) {
+          showError('A megrendelés már nem szerkeszthető.');
+          return;
+        }
+        state.busy = true;
+        render();
+        var fn = state.editToken ? nameToken : nameOrder;
+        var args = state.editToken
+          ? [state.editToken].concat(argsTail)
+          : [state.orderId].concat(argsTail);
+        run(fn, args, function (res) {
+          state.busy = false;
+          if (res && res.order) {
+            state.order = res.order;
+            state.editable = res.order.status === 'NEW';
+          }
+          showOk('Mentve.');
+          if (onOk) onOk(res);
+          render();
+        }, function (err) {
+          state.busy = false;
+          showError(err && err.message ? err.message : String(err));
+          render();
+        });
+      }
+
+      function saveDetails() {
+        var payload = {
+          fullName: $('fullName').value.trim(),
+          phone: $('phone').value.trim(),
+          email: $('email').value.trim(),
+          comments: $('comments').value.trim(),
+          calendarFormatPref: $('format').value,
+          events: collectEvents()
+        };
+        mutate('updateOrder', 'updateOrderByOrderId', [payload]);
+      }
+
+      function collectEvents() {
+        var rows = document.querySelectorAll('[data-event-row]');
+        var events = [];
+        for (var i = 0; i < rows.length; i++) {
+          var date = rows[i].querySelector('[data-event-date]').value;
+          var desc = rows[i].querySelector('[data-event-desc]').value.trim();
+          if (date && desc) events.push({ eventDate: date, description: desc });
+        }
+        return events;
+      }
+
+      function deletePhoto(photoId) {
+        if (!confirm('Törli ezt a fényképet?')) return;
+        mutate('deletePhoto', 'deletePhotoByOrderId', [photoId]);
+      }
+
+      function compressFile(file) {
+        return new Promise(function (resolve, reject) {
+          var maxSide = 1600;
+          var quality = 0.82;
+          var url = URL.createObjectURL(file);
+          var img = new Image();
+          img.onload = function () {
+            try {
+              var w = img.width, h = img.height;
+              if (Math.max(w, h) > maxSide) {
+                if (w >= h) { h = Math.round(h * maxSide / w); w = maxSide; }
+                else { w = Math.round(w * maxSide / h); h = maxSide; }
+              }
+              var canvas = document.createElement('canvas');
+              canvas.width = w; canvas.height = h;
+              canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+              var dataUrl = canvas.toDataURL('image/jpeg', quality);
+              var base64 = dataUrl.split(',')[1];
+              URL.revokeObjectURL(url);
+              resolve({
+                name: (file.name || 'photo.jpg').replace(/\.\w+$/, '') + '.jpg',
+                mimeType: 'image/jpeg',
+                dataBase64: base64
+              });
+            } catch (e) {
+              URL.revokeObjectURL(url);
+              reject(e);
+            }
+          };
+          img.onerror = function () {
+            URL.revokeObjectURL(url);
+            reject(new Error('Nem sikerült betölteni a képet.'));
+          };
+          img.src = url;
+        });
+      }
+
+      function onPickFiles(month, input) {
+        var files = input.files;
+        if (!files || !files.length) return;
+        var remaining = state.maxPhotos - photosForMonth(month).length;
+        if (remaining <= 0) {
+          showError('Havonként maximum ' + state.maxPhotos + ' fénykép.');
+          input.value = '';
+          return;
+        }
+        var selected = Array.prototype.slice.call(files, 0, remaining);
+        input.value = '';
+        state.busy = true;
+        showOk('');
+        showError('');
+        render();
+        Promise.all(selected.map(compressFile)).then(function (payloads) {
+          mutate('uploadPhotosBatch', 'uploadPhotosBatchByOrderId', [month, payloads]);
+        }).catch(function (err) {
+          state.busy = false;
+          showError(err && err.message ? err.message : String(err));
+          render();
+        });
+      }
+
+      function render() {
+        var o = state.order;
+        if (!o) return;
+        var editable = state.editable && !state.busy;
+        $('heroSub').innerHTML =
+          escapeHtml(o.orderId) +
+          ' <span class="badge">' + escapeHtml(o.status || '') + '</span>' +
+          (state.editable
+            ? ' <span class="badge edit">Szerkeszthető</span>'
+            : ' <span class="badge ro">Csak olvasható</span>');
+
+        var html = '';
+        html += '<h2>Megrendelő adatok</h2>';
+        if (!state.editable) {
+          html += '<p class="hint">A megrendelés státusza nem NEW — a tartalom nem módosítható.</p>';
+        } else {
+          html += '<p class="hint">Amíg a státusz NEW, módosíthatja az adatokat és a fényképeket.</p>';
+        }
+
+        html +=
+          '<label>Teljes név</label><input id="fullName" value="' + escapeAttr(o.fullName || '') + '"' + (editable ? '' : ' disabled') + ' />' +
+          '<label>Telefon</label><input id="phone" value="' + escapeAttr(o.phone || '') + '"' + (editable ? '' : ' disabled') + ' />' +
+          '<label>E-mail</label><input id="email" value="' + escapeAttr(o.email || '') + '"' + (editable ? '' : ' disabled') + ' />' +
+          '<label>Formátum</label><select id="format"' + (editable ? '' : ' disabled') + '>' +
+          '<option value="portrait"' + (o.calendarFormatPref === 'portrait' ? ' selected' : '') + '>Álló (portrait)</option>' +
+          '<option value="landscape"' + (o.calendarFormatPref === 'landscape' ? ' selected' : '') + '>Fekvő (landscape)</option>' +
+          '</select>' +
+          '<label>Megjegyzés</label><textarea id="comments" rows="3"' + (editable ? '' : ' disabled') + '>' +
+          escapeHtml(o.comments || '') + '</textarea>';
+
+        html += '<div class="meta" style="margin-top:12px">' +
+          '<div><strong>Év</strong>' + escapeHtml(o.calendarYear) + '</div>' +
+          '<div><strong>Frissítve</strong>' + escapeHtml(o.updatedAt || o.createdAt || '') + '</div>' +
+          '</div>';
+
+        html += '<h2>Események</h2>';
+        var events = o.events || [];
+        if (!events.length && !editable) {
+          html += '<p class="hint">Nincs megadott esemény.</p>';
+        } else {
+          html += '<div id="eventList">';
+          for (var ei = 0; ei < Math.max(events.length, editable ? 1 : 0); ei++) {
+            var ev = events[ei] || { eventDate: '', description: '' };
+            html +=
+              '<div data-event-row style="display:grid;gap:8px;margin-bottom:8px;' +
+              (window.matchMedia && window.matchMedia('(min-width:640px)').matches ? 'grid-template-columns:160px 1fr' : '') + '">' +
+              '<input data-event-date type="date" value="' + escapeAttr(ev.eventDate || '') + '"' + (editable ? '' : ' disabled') + ' />' +
+              '<input data-event-desc placeholder="Leírás" value="' + escapeAttr(ev.description || '') + '"' + (editable ? '' : ' disabled') + ' />' +
+              '</div>';
+          }
+          html += '</div>';
+          if (editable) {
+            html += '<button type="button" class="btn btn-secondary" id="addEventBtn">+ Esemény</button>';
+          }
+        }
+
+        if (editable) {
+          html += '<div class="actions"><button type="button" class="btn btn-primary" id="saveBtn">Adatok mentése</button></div>';
+        }
+
+        html += '<h2>Feltöltött fényképek</h2>';
+        html += '<p class="hint">Havonként legfeljebb ' + state.maxPhotos + ' kép.</p>';
+        for (var m = 1; m <= 12; m++) {
+          var list = photosForMonth(m);
+          html += '<div class="month"><div class="month-head"><span>' + MONTHS[m - 1] + '</span><span>' + list.length + ' / ' + state.maxPhotos + '</span></div>';
+          html += '<div class="thumbs">';
+          for (var pi = 0; pi < list.length; pi++) {
+            var p = list[pi];
+            var src = p.thumbUrl || p.viewUrl || '';
+            html += '<div class="thumb">';
+            if (src) html += '<img src="' + escapeAttr(src) + '" alt="" loading="lazy" />';
+            if (editable) {
+              html += '<button type="button" title="Törlés" data-del="' + escapeAttr(p.id) + '">×</button>';
+            }
+            html += '</div>';
+          }
+          html += '</div>';
+          if (editable && list.length < state.maxPhotos) {
+            html +=
+              '<div class="actions" style="margin-top:10px">' +
+              '<label class="btn btn-secondary" style="display:inline-block">' +
+              'Fénykép hozzáadása' +
+              '<input type="file" accept="image/jpeg,image/png,image/webp" multiple hidden data-month="' + m + '" />' +
+              '</label></div>';
+          }
+          html += '</div>';
+        }
+
+        html += '<h2>Termék előnézet</h2>';
+        html += '<p class="hint">A vízjeles, összes oldalt tartalmazó előnézet a desktop export után jelenik meg.</p>';
+        if (o.previewUrl) {
+          html += '<div class="preview-wrap"><img src="' + escapeAttr(o.previewUrl) + '" alt="Naptár előnézet" /></div>';
+        } else {
+          html += '<div class="empty">Az előnézet még nem készült el. Amint a naptár elkészül és exportálásra kerül, itt fog megjelenni.</div>';
+        }
+
+        $('view').innerHTML = html;
+
+        if (editable) {
+          var saveBtn = $('saveBtn');
+          if (saveBtn) saveBtn.onclick = saveDetails;
+          var addEv = $('addEventBtn');
+          if (addEv) {
+            addEv.onclick = function () {
+              var listEl = $('eventList');
+              if (!listEl) return;
+              var row = document.createElement('div');
+              row.setAttribute('data-event-row', '');
+              row.style.cssText = 'display:grid;gap:8px;margin-bottom:8px';
+              row.innerHTML =
+                '<input data-event-date type="date" />' +
+                '<input data-event-desc placeholder="Leírás" />';
+              listEl.appendChild(row);
+            };
+          }
+          var dels = document.querySelectorAll('[data-del]');
+          for (var di = 0; di < dels.length; di++) {
+            dels[di].onclick = (function (id) {
+              return function () { deletePhoto(id); };
+            })(dels[di].getAttribute('data-del'));
+          }
+          var inputs = document.querySelectorAll('input[type=file][data-month]');
+          for (var fi = 0; fi < inputs.length; fi++) {
+            inputs[fi].onchange = (function (inp) {
+              return function () {
+                onPickFiles(Number(inp.getAttribute('data-month')), inp);
+              };
+            })(inputs[fi]);
+          }
+        }
+
+        if (WEB_APP_URL) {
+          $('lookupLink').href = WEB_APP_URL + '?page=lookup';
+          $('newOrderLink').href = WEB_APP_URL + '?page=customer';
+        }
+      }
+
+      load();
+    </script>
+  </body>
+</html>

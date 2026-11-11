@@ -1,0 +1,29 @@
+{
+  "$schemaComment": "Copy to pipeline.config.json and fill in the values below.",
+
+  "scriptId": "",
+  "deploymentId": "",
+
+  "rootDir": ".",
+  "liveDeploy": true,
+  "debounceMs": 1500,
+  "deployDescriptionPrefix": "local-sync",
+
+  "watch": {
+    "globs": ["**/*.{gs,html}", "appsscript.json"],
+    "ignore": [
+      "**/node_modules/**",
+      "**/scripts/**",
+      "**/social-share.html",
+      "**/.git/**",
+      "**/pipeline.config.json",
+      "**/pipeline.config.example.json"
+    ]
+  },
+
+  "notes": {
+    "scriptId": "Apps Script → Project Settings → Script ID",
+    "deploymentId": "Run: npm run list-deployments  (use the Web app deployment id)",
+    "login": "Run once: npm run login  (browser OAuth as zataipixel@gmail.com)"
+  }
+}

@@ -12,6 +12,10 @@ public sealed class OrderRecord
     public string Comments { get; set; } = string.Empty;
     public string Status { get; set; } = "NEW";
     public bool PrivacyConsent { get; set; }
+
+    /// <summary>True when the order was started from the office walk-in URL (?officeorder=true).</summary>
+    public bool DirectFromOffice { get; set; }
+
     public string DriveFolderUrl { get; set; } = string.Empty;
     public string DriveFolderId { get; set; } = string.Empty;
     public string LocalFolderPath { get; set; } = string.Empty;

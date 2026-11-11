@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="hu">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Családi naptár rendelés</title>
+  <meta name="description" content="Személyre szabott, nyomtatott 12 oldalas A4 naptár a saját fényképeiddel — 60 RON." />
+  <!--
+    Post THIS page on Facebook (not script.google.com /exec).
+    Facebook's in-app browser cannot load Google Apps Script (blank white page).
+    Enable GitHub Pages: Settings → Pages → Source = /docs
+  -->
+  <meta property="og:type" content="website" />
+  <meta property="og:site_name" content="Családi naptár" />
+  <meta property="og:title" content="Családi naptár rendelés" />
+  <meta property="og:description" content="Személyre szabott, nyomtatott 12 oldalas A4 naptár a saját fényképeiddel — 60 RON." />
+  <meta property="og:url" content="https://blaczko.github.io/calendarGenerator/share/" />
+  <meta property="og:image" content="https://blaczko.github.io/calendarGenerator/share/og.jpg" />
+  <meta property="og:image:secure_url" content="https://blaczko.github.io/calendarGenerator/share/og.jpg" />
+  <meta property="og:image:width" content="1200" />
+  <meta property="og:image:height" content="630" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="Családi naptár rendelés" />
+  <meta name="twitter:description" content="Személyre szabott, nyomtatott 12 oldalas A4 naptár a saját fényképeiddel — 60 RON." />
+  <meta name="twitter:image" content="https://blaczko.github.io/calendarGenerator/share/og.jpg" />
+  <style>
+    :root { --ink: #2a241c; --muted: #6b6258; --accent: #b4532a; --card: #fffaf4; --line: #e4d8c8; }
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: Georgia, "Times New Roman", serif; background: linear-gradient(160deg, #f7f1e8, #efe4d6); color: var(--ink); }
+    .wrap { max-width: 640px; margin: 0 auto; padding: 28px 16px 48px; }
+    .card { background: var(--card); border: 1px solid var(--line); border-radius: 24px; overflow: hidden; box-shadow: 0 18px 50px rgba(80,50,20,.08); }
+    .preview { display: block; width: 100%; height: auto; border-bottom: 1px solid var(--line); }
+    .hero { background: linear-gradient(120deg, #3d2a1f, #8a3c1c 45%, #c47a3a); color: #fff8f1; padding: 28px 24px; }
+    .hero h1 { margin: 0; font-size: 1.8rem; line-height: 1.2; }
+    .hero p { margin: 10px 0 0; opacity: .92; }
+    .body { padding: 22px 24px 28px; }
+    .price { font-size: 1.6rem; font-weight: 700; margin: 0 0 8px; }
+    .muted { color: var(--muted); margin: 0 0 18px; }
+    .btn {
+      display: inline-block; background: var(--accent); color: #fff; text-decoration: none;
+      padding: 14px 20px; border-radius: 12px; font-weight: 700; border: 0; font: inherit; cursor: pointer;
+    }
+    .btn-secondary { background: #efe4d6; color: var(--ink); margin-left: 8px; }
+    .warn {
+      display: none; margin: 0 0 16px; padding: 12px 14px; border-radius: 12px;
+      background: #fff3cd; border: 1px solid #f0d78c; color: #5c4813; font-size: 0.95rem;
+    }
+    .warn.show { display: block; }
+    .actions { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+    .hint { margin: 14px 0 0; font-size: 0.85rem; color: var(--muted); }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="card">
+      <img class="preview" src="og.jpg" alt="Családi naptár" />
+      <div class="hero">
+        <h1>Családi naptár rendelés</h1>
+        <p>Személyre szabott, nyomtatott 12 oldalas A4 naptár a saját fényképeiddel — 60 RON.</p>
+      </div>
+      <div class="body">
+        <div id="fbWarn" class="warn">
+          A Facebook beépített böngészője nem tudja megnyitni a Google Apps Script oldalt (üres fehér lap).
+          Nyissa meg külső böngészőben (Chrome / Safari).
+        </div>
+        <p class="price">60 RON</p>
+        <p class="muted">12 oldalas nyomtatott A4 naptár · saját fényképek · névnapok és események</p>
+        <div class="actions">
+          <button type="button" class="btn" id="openBtn">Megrendelés indítása</button>
+          <button type="button" class="btn btn-secondary" id="copyBtn">Link másolása</button>
+        </div>
+        <p class="hint" id="hint">
+          Facebookon: jobb felső ⋯ → <strong>Megnyitás külső böngészőben</strong> / Open in browser.
+        </p>
+      </div>
+    </div>
+  </div>
+  <script>
+    (function () {
+      var ORDER_URL = 'https://script.google.com/macros/s/AKfycbwx0WrFHBjckGTiAsfqPCZbgBfCyPQeT64Xv1cuoC7Tz-oc0RlEn-h6I6j0-hnrOSwa/exec';
+      var ua = navigator.userAgent || '';
+      var isFacebook =
+        /FBAN|FBAV|FB_IAB|FBIOS|FB4A|Instagram|Line\//i.test(ua) ||
+        /\bwv\b/i.test(ua) && /Facebook/i.test(ua);
+      var isAndroid = /Android/i.test(ua);
+
+      var warn = document.getElementById('fbWarn');
+      if (isFacebook && warn) warn.classList.add('show');
+
+      function androidChromeIntent(url) {
+        // Force out of Facebook WebView into Chrome when possible.
+        var bare = url.replace(/^https?:\/\//i, '');
+        return 'intent://' + bare + '#Intent;scheme=https;package=com.android.chrome;S.browser_fallback_url=' +
+          encodeURIComponent(url) + ';end';
+      }
+
+      function openOrder() {
+        if (isFacebook && isAndroid) {
+          window.location.href = androidChromeIntent(ORDER_URL);
+          return;
+        }
+        // iOS / desktop: new tab; in FB app user may still need ⋯ → Open in browser
+        var w = window.open(ORDER_URL, '_blank', 'noopener');
+        if (!w) window.location.href = ORDER_URL;
+      }
+
+      document.getElementById('openBtn').onclick = openOrder;
+      document.getElementById('copyBtn').onclick = function () {
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(ORDER_URL).then(function () {
+            document.getElementById('hint').textContent = 'Link kimásolva — illessze be Chrome/Safari címsorába.';
+          }).catch(function () {
+            window.prompt('Másolja a linket:', ORDER_URL);
+          });
+        } else {
+          window.prompt('Másolja a linket:', ORDER_URL);
+        }
+      };
+
+      // If already outside Facebook, go straight to the order form.
+      if (!isFacebook) {
+        // Keep the landing visible for OG crawlers; humans can tap the button.
+      }
+    })();
+  </script>
+</body>
+</html>

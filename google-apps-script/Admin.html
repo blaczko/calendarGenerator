@@ -238,7 +238,9 @@
           var html = '';
           (res.orders || []).forEach(function (o) {
             html += '<tr>' +
-              '<td><strong>' + esc(o.orderId) + '</strong><div style="color:#9aa3b5;font-size:12px">' + esc(o.createdAt) + '</div></td>' +
+              '<td><strong>' + esc(o.orderId) + '</strong>' +
+              (o.directFromOffice ? ' <span style="display:inline-block;margin-left:6px;padding:2px 8px;border-radius:999px;background:#1e3a5f;color:#dbe7f5;font-size:11px">IRODA</span>' : '') +
+              '<div style="color:#9aa3b5;font-size:12px">' + esc(o.createdAt) + '</div></td>' +
               '<td>' + esc(o.fullName) + '</td>' +
               '<td>' + esc(o.phone) + '</td>' +
               '<td>' + esc(o.calendarYear) + '</td>' +

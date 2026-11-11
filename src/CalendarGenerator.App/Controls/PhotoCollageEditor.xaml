@@ -22,9 +22,14 @@
                 ClipToBounds="True"
                 SizeChanged="Surface_SizeChanged" />
 
+        <!-- Gap distance guides (always visible while editing) -->
+        <Canvas x:Name="GapLayer"
+                IsHitTestVisible="False"
+                ClipToBounds="True" />
+
         <Border VerticalAlignment="Bottom" HorizontalAlignment="Stretch"
                 Background="#CCFFFFFF" Padding="10,6">
-            <TextBlock Text="Kép / ✥ húzása = mozgatás  •  Sarkok = méret  •  Arány megmarad"
+            <TextBlock Text="Kép / ✥ húzása = mozgatás  •  Sarkok = méret  •  A közök mm-ben látszanak"
                        FontSize="11"
                        Foreground="#6A655C"
                        HorizontalAlignment="Center" />

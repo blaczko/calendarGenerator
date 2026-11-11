@@ -174,16 +174,15 @@ public partial class MainViewModel : ObservableObject
     {
         if (_suppressTemplateApply || string.IsNullOrWhiteSpace(value)) return;
 
-        var month = Project.GetMonth(SelectedMonth);
         var preset = _templates.Resolve(value, Project.CustomTemplates);
-        month.TemplateId = value;
-        month.Theme = PageTheme.FromTemplate(preset);
-        ThemeEditor.ReplaceTheme(month.Theme);
+        var theme = PageTheme.FromTemplate(preset);
+        ApplyThemeToAllMonths(value, theme);
+        ThemeEditor.ReplaceTheme(Project.GetMonth(SelectedMonth).Theme!);
         OnPropertyChanged(nameof(CanDeleteSelectedTemplate));
         OnPropertyChanged(nameof(SelectedCalendarFormat));
         _ = RefreshPreviewAsync();
         ScheduleAutoSave();
-        StatusMessage = $"Háttérsablon: {preset.DisplayName}";
+        StatusMessage = $"Háttérsablon minden hónapra: {preset.DisplayName}";
     }
 
     private void SyncThemeEditor()
@@ -203,9 +202,21 @@ public partial class MainViewModel : ObservableObject
 
     private void OnThemeEdited()
     {
+        // ThemeEditor mutates the selected month's theme — mirror it to every page.
+        ApplyThemeToAllMonths(SelectedTemplateId, ThemeEditor.Model);
         OnPropertyChanged(nameof(SelectedCalendarFormat));
         _ = RefreshPreviewAsync();
         ScheduleAutoSave();
+    }
+
+    private void ApplyThemeToAllMonths(string templateId, PageTheme source)
+    {
+        foreach (var month in Project.Months)
+        {
+            month.TemplateId = templateId;
+            // Keep the edited instance on the selected month; clone for the rest.
+            month.Theme = month.Month == SelectedMonth ? source : source.Clone();
+        }
     }
 
     [RelayCommand]
@@ -306,6 +317,13 @@ public partial class MainViewModel : ObservableObject
 
         try
         {
+            // Keep order metadata in sync with the open project calendar events.
+            if (!string.IsNullOrWhiteSpace(ActiveOrderId)
+                && string.Equals(SelectedOrder.OrderId, ActiveOrderId, StringComparison.OrdinalIgnoreCase))
+            {
+                SyncProjectEventsToSelectedOrder(saveToDisk: false);
+            }
+
             _orderRepo.Save(SelectedOrder);
             StatusMessage = $"Mentve: {SelectedOrder.OrderId}";
         }
@@ -516,6 +534,7 @@ public partial class MainViewModel : ObservableObject
         Project.Events.Add(evt);
         NewEventDescription = string.Empty;
         RefreshEvents();
+        SyncProjectEventsToSelectedOrder();
         _ = RefreshPreviewAsync();
         ScheduleAutoSave();
         StatusMessage = "Esemény hozzáadva.";
@@ -528,6 +547,7 @@ public partial class MainViewModel : ObservableObject
         Project.Events.Remove(SelectedEvent.Model);
         SelectedEvent = null;
         RefreshEvents();
+        SyncProjectEventsToSelectedOrder();
         _ = RefreshPreviewAsync();
         ScheduleAutoSave();
     }
@@ -560,6 +580,7 @@ public partial class MainViewModel : ObservableObject
         SelectedEvent.Day = NewEventDay;
         SelectedEvent.Description = NewEventDescription.Trim();
         RefreshEvents();
+        SyncProjectEventsToSelectedOrder();
         _ = RefreshPreviewAsync();
         ScheduleAutoSave();
         StatusMessage = "Esemény módosítva.";
@@ -568,27 +589,30 @@ public partial class MainViewModel : ObservableObject
     [RelayCommand]
     private void ResetPhotoLayouts()
     {
-        foreach (var photo in Project.GetMonth(SelectedMonth).Photos)
-            photo.HasManualLayout = false;
+        foreach (var month in Project.Months)
+        {
+            foreach (var photo in month.Photos)
+                photo.HasManualLayout = false;
+        }
 
         PhotosChanged?.Invoke(this, EventArgs.Empty);
         _ = RefreshPreviewAsync();
         ScheduleAutoSave();
-        StatusMessage = "Automatikus fénykép-elrendezés visszaállítva.";
+        StatusMessage = "Automatikus fénykép-elrendezés minden hónapra visszaállítva.";
     }
 
     public void NotifyPhotoLayoutChanged()
     {
-        _ = RefreshPreviewAsync();
+        // Interactive preview pages already show the new layout; skip full re-render.
         ScheduleAutoSave();
         StatusMessage = "Fénykép elrendezés frissítve.";
     }
 
-    public void BindInteractivePreview(CalendarPageControl control)
+    public void BindInteractivePreview(CalendarPageControl control, int monthNumber)
     {
         var size = _pageRender.GetPageSizeDip(Project.Paper);
-        var month = _calendarEngine.BuildMonth(Project, SelectedMonth);
-        var monthPhotos = Project.GetMonth(SelectedMonth);
+        var month = _calendarEngine.BuildMonth(Project, monthNumber);
+        var monthPhotos = Project.GetMonth(monthNumber);
         var theme = monthPhotos.GetOrCreateTheme(_templates, Project.CustomTemplates);
         var (photoW, photoH) = PageRenderService.GetPhotoAreaSize(size);
         var collage = new CollageEngine().Build(monthPhotos.Photos, photoW / photoH);
@@ -598,16 +622,21 @@ public partial class MainViewModel : ObservableObject
         control.Bind(month, monthPhotos, collage, theme, size, interactivePhotos: true);
     }
 
+    public void BindAllInteractivePreviews(IEnumerable<CalendarPageControl> pages)
+    {
+        foreach (var page in pages)
+        {
+            var month = page.Tag is int m ? m : 0;
+            if (month is < 1 or > 12) continue;
+            BindInteractivePreview(page, month);
+        }
+    }
+
     [RelayCommand]
     private void ApplyTemplateToAll()
     {
         var source = Project.GetMonth(SelectedMonth).GetOrCreateTheme(_templates, Project.CustomTemplates);
-        foreach (var m in Project.Months)
-        {
-            m.TemplateId = SelectedTemplateId;
-            m.Theme = source.Clone();
-        }
-
+        ApplyThemeToAllMonths(SelectedTemplateId, source);
         StatusMessage = "Megjelenés alkalmazva minden hónapra.";
         ScheduleAutoSave();
         _ = RefreshPreviewAsync();
@@ -618,7 +647,7 @@ public partial class MainViewModel : ObservableObject
     {
         var dialog = new OpenFileDialog
         {
-            Title = "Háttérkép a hónaphoz",
+            Title = "Háttérkép minden hónaphoz",
             Filter = "Képek|*.jpg;*.jpeg;*.png;*.webp;*.JPG;*.JPEG;*.PNG;*.WEBP",
             Multiselect = false
         };
@@ -637,8 +666,10 @@ public partial class MainViewModel : ObservableObject
             theme.BackgroundImagePath = prepared.Path;
             theme.ProjectCopyPath = null;
             theme.BackgroundStyle = TemplateStyle.CustomImage;
+            ApplyThemeToAllMonths(SelectedTemplateId, theme);
+            ThemeEditor.ReplaceTheme(Project.GetMonth(SelectedMonth).Theme!);
             ThemeEditor.NotifyBackgroundChanged();
-            StatusMessage = "Háttérkép beállítva ehhez a hónaphoz.";
+            StatusMessage = "Háttérkép beállítva minden hónapra.";
         }
         catch (Exception ex)
         {
@@ -654,8 +685,10 @@ public partial class MainViewModel : ObservableObject
         theme.ProjectCopyPath = null;
         if (theme.BackgroundStyle == TemplateStyle.CustomImage)
             theme.BackgroundStyle = TemplateStyle.SoftOrganic;
+        ApplyThemeToAllMonths(SelectedTemplateId, theme);
+        ThemeEditor.ReplaceTheme(Project.GetMonth(SelectedMonth).Theme!);
         ThemeEditor.NotifyBackgroundChanged();
-        StatusMessage = "Egyedi háttérkép eltávolítva.";
+        StatusMessage = "Egyedi háttérkép eltávolítva minden hónapról.";
     }
 
     [RelayCommand]
@@ -709,7 +742,10 @@ public partial class MainViewModel : ObservableObject
                 Style = TemplateStyle.CustomImage,
                 BackgroundImagePath = prepared.Path,
                 CalendarFormat = ThemeEditor.CalendarFormat,
-                FontFamily = ThemeEditor.FontFamily
+                FontFamily = ThemeEditor.FontFamily,
+                PhotoBorderThickness = ThemeEditor.PhotoBorderThickness,
+                PhotoBorderColorHex = ThemeEditor.PhotoBorderColorHex,
+                PhotoCornerRadius = ThemeEditor.PhotoCornerRadius
             };
 
             Project.CustomTemplates.Insert(0, template);
@@ -843,6 +879,8 @@ public partial class MainViewModel : ObservableObject
             SelectedMonth = 1;
             RefreshTemplates();
             SyncThemeEditor();
+            // Older projects may have per-month themes — unify onto the first month's look.
+            ApplyThemeToAllMonths(SelectedTemplateId, ThemeEditor.Model);
             RefreshEvents();
             RefreshPhotos();
             await RefreshPreviewAsync();
@@ -907,7 +945,12 @@ public partial class MainViewModel : ObservableObject
                             ExportProgress = a * 50.0 / b;
                     }
                 }
-                else if (msg.Contains("vízjel", StringComparison.OrdinalIgnoreCase))
+                else if (msg.Contains("vízjel", StringComparison.OrdinalIgnoreCase) ||
+                         msg.Contains("előnézet", StringComparison.OrdinalIgnoreCase))
+                {
+                    ExportProgress = 70;
+                }
+                else if (msg.Contains("PDF (tiszta)", StringComparison.OrdinalIgnoreCase))
                 {
                     ExportProgress = 55;
                 }
@@ -917,15 +960,45 @@ public partial class MainViewModel : ObservableObject
                 }
             });
 
-            var (clean, watermarked) = await _pdfExport.ExportOrderPairAsync(
+            var (clean, previewStrip) = await _pdfExport.ExportOrderPairAsync(
                 Project,
                 _appSettings.PdfOutputFolder,
                 orderId,
                 progress);
 
-            StatusMessage = $"PDF páros kész: {Path.GetFileName(clean)} + {Path.GetFileName(watermarked)}";
+            // Keep a copy next to the order metadata for local review / re-upload.
+            if (SelectedOrder is not null && !string.IsNullOrWhiteSpace(SelectedOrder.LocalFolderPath))
+            {
+                var metaDir = Path.Combine(SelectedOrder.LocalFolderPath, "00_Megrendelo_adatai");
+                Directory.CreateDirectory(metaDir);
+                File.Copy(previewStrip, Path.Combine(metaDir, "preview_strip.jpg"), overwrite: true);
+            }
+
+            var driveNote = string.Empty;
+            var driveFolderId = ResolveDriveFolderId(SelectedOrder);
+            if (!string.IsNullOrWhiteSpace(driveFolderId) &&
+                _appSettings.GoogleDriveConnected &&
+                !string.IsNullOrWhiteSpace(_appSettings.GoogleClientId))
+            {
+                try
+                {
+                    await _driveSync.UploadPreviewStripAsync(
+                        _appSettings,
+                        driveFolderId,
+                        previewStrip,
+                        progress);
+                    driveNote = "\n\nElőnézet feltöltve a Drive-ra (web áttekintő oldal).";
+                }
+                catch (Exception uploadEx)
+                {
+                    driveNote = $"\n\nDrive feltöltés nem sikerült: {uploadEx.Message}\n" +
+                                "Csatlakozzon újra a Drive-hoz a beállításokban (írási jogosultság kell), majd exportáljon újra.";
+                }
+            }
+
+            StatusMessage = $"Export kész: {Path.GetFileName(clean)} + {Path.GetFileName(previewStrip)}";
             MessageBox.Show(
-                $"Két PDF elkészült:\n\n{clean}\n\n{watermarked}",
+                $"Export elkészült:\n\n{clean}\n\n{previewStrip}{driveNote}",
                 "Export",
                 MessageBoxButton.OK,
                 MessageBoxImage.Information);
@@ -941,11 +1014,64 @@ public partial class MainViewModel : ObservableObject
         }
     }
 
+    private static string ResolveDriveFolderId(OrderRecord? order)
+    {
+        if (order is null) return string.Empty;
+        if (!string.IsNullOrWhiteSpace(order.DriveFolderId))
+            return order.DriveFolderId.Trim();
+
+        var url = order.DriveFolderUrl ?? string.Empty;
+        var marker = "/folders/";
+        var idx = url.IndexOf(marker, StringComparison.OrdinalIgnoreCase);
+        if (idx < 0) return string.Empty;
+        var id = url[(idx + marker.Length)..];
+        var cut = id.IndexOfAny(['?', '/', '&']);
+        if (cut >= 0) id = id[..cut];
+        return id.Trim();
+    }
+
     private void RefreshEvents()
     {
         Events.Clear();
         foreach (var e in Project.Events.OrderBy(x => x.Month).ThenBy(x => x.Day).ThenBy(x => x.Description))
             Events.Add(new EventItemViewModel(e));
+    }
+
+    /// <summary>
+    /// Writes the open project's events back into the selected order JSON so a later
+    /// Drive re-open / reopen from Megrendelések keeps the same annotations.
+    /// </summary>
+    private void SyncProjectEventsToSelectedOrder(bool saveToDisk = true)
+    {
+        if (SelectedOrder is null || string.IsNullOrWhiteSpace(ActiveOrderId))
+            return;
+        if (!string.Equals(SelectedOrder.OrderId, ActiveOrderId, StringComparison.OrdinalIgnoreCase))
+            return;
+
+        SelectedOrder.Events = Project.Events
+            .Where(e => !string.IsNullOrWhiteSpace(e.Description))
+            .Select(e =>
+            {
+                e.ClampToValidDay();
+                return new OrderEvent
+                {
+                    EventDate = $"{Project.Year:D4}-{e.Month:D2}-{e.Day:D2}",
+                    Description = e.Description.Trim()
+                };
+            })
+            .ToList();
+
+        if (!saveToDisk || string.IsNullOrWhiteSpace(SelectedOrder.LocalFolderPath))
+            return;
+
+        try
+        {
+            _orderRepo.Save(SelectedOrder);
+        }
+        catch
+        {
+            // best-effort; project autosave still keeps a local copy
+        }
     }
 
     private void RefreshPhotos()

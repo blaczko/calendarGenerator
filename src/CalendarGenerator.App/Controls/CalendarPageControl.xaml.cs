@@ -74,6 +74,10 @@ public partial class CalendarPageControl : UserControl
             PhotoCanvas.Visibility = Visibility.Collapsed;
             PhotoCanvas.Children.Clear();
             InteractivePhotos.Visibility = Visibility.Visible;
+            InteractivePhotos.SetFrameStyle(
+                _theme.PhotoBorderThickness,
+                _theme.PhotoBorderColorHex,
+                _theme.PhotoCornerRadius);
             InteractivePhotos.SetPhotos(monthPhotos.Photos);
             InteractivePhotos.LayoutChanged += OnInteractiveLayoutChanged;
             EmptyPhotoHint.Visibility = monthPhotos.Photos.Count == 0
@@ -219,6 +223,8 @@ public partial class CalendarPageControl : UserControl
         const double margin = 6;
         var font = new FontFamily(_theme.FontFamily + ", Georgia, Segoe UI");
 
+        var stampedDays = new HashSet<(int Row, int Col)>();
+
         foreach (var (cell, row, col) in _eventCells)
         {
             var events = cell.Events.Take(3).ToList();
@@ -292,34 +298,19 @@ public partial class CalendarPageControl : UserControl
                 Panel.SetZIndex(annotation, 50 + index);
                 EventOverlay.Children.Add(annotation);
 
-                // Re-stamp day numbers on top for every cell this label may cross.
-                var spillRight = x + textW + 4;
-                for (var c = col; c < 7 && c * cellWidth < spillRight; c++)
-                {
-                    var day = FindDayNumber(row, c);
-                    if (day is null) continue;
-                    StampDayNumberOnTop(
-                        day.Value,
-                        c * cellWidth,
-                        cellTop,
-                        cellWidth,
-                        dayNumberBand,
-                        font,
-                        z: 80 + c);
-                }
+            }
 
-                // Always keep the home-cell number above its own label.
-                if (cell.DayNumber is int homeDay)
-                {
-                    StampDayNumberOnTop(
-                        homeDay,
-                        cellLeft,
-                        cellTop,
-                        cellWidth,
-                        dayNumberBand,
-                        font,
-                        z: 90);
-                }
+            // Only the event's own day gets an overlay stamp (circle + digit).
+            // Neighbor cells already have their in-cell number — restamping them doubles it.
+            if (cell.DayNumber is int homeDay && stampedDays.Add((row, col)))
+            {
+                StampDayNumberOnTop(
+                    homeDay,
+                    cellLeft,
+                    cellTop,
+                    cellWidth,
+                    font,
+                    z: 90);
             }
         }
     }
@@ -363,43 +354,76 @@ public partial class CalendarPageControl : UserControl
         double cellLeft,
         double cellTop,
         double cellWidth,
-        double dayNumberBand,
         FontFamily font,
         int z)
     {
         var daySize = Math.Clamp(_theme.DayFontSize * (_style.DaySizeFactor), 10, 36);
         var alignCenter = _style.DayAlign == DayAlignMode.Center;
+        var weight = _style.BoldDays ? FontWeights.Bold : FontWeights.SemiBold;
 
-        // Soft white plate so red event ink cannot hide the digit.
-        var plate = new Border
+        TextBlock MakeDayText(Brush foreground) => new()
         {
-            Width = Math.Min(cellWidth * 0.55, daySize + 18),
-            Height = Math.Min(dayNumberBand - 2, daySize + 12),
-            Background = new SolidColorBrush(Color.FromArgb(210, 255, 252, 248)),
-            CornerRadius = new CornerRadius(3),
-            IsHitTestVisible = false,
-            Child = new TextBlock
-            {
-                Text = dayNumber.ToString(),
-                FontFamily = font,
-                FontSize = daySize,
-                FontWeight = _style.BoldDays ? FontWeights.Bold : FontWeights.SemiBold,
-                Foreground = _dayNumberBrush,
-                HorizontalAlignment = HorizontalAlignment.Center,
-                VerticalAlignment = VerticalAlignment.Center,
-                Margin = new Thickness(4, 1, 4, 1)
-            }
+            Text = dayNumber.ToString(),
+            FontFamily = font,
+            FontSize = daySize,
+            FontWeight = weight,
+            Foreground = foreground,
+            IsHitTestVisible = false
         };
 
-        var x = alignCenter
-            ? cellLeft + (cellWidth - plate.Width) / 2
-            : cellLeft + 3;
-        var y = cellTop + 2;
+        var measure = MakeDayText(_dayNumberBrush);
+        measure.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
+        var tw = measure.DesiredSize.Width;
+        var th = measure.DesiredSize.Height;
 
-        Canvas.SetLeft(plate, x);
-        Canvas.SetTop(plate, y);
-        Panel.SetZIndex(plate, z);
-        EventOverlay.Children.Add(plate);
+        var diameter = Math.Max(Math.Max(tw, th) + 18, 30);
+        var host = new Canvas
+        {
+            Width = diameter,
+            Height = diameter,
+            ClipToBounds = false,
+            IsHitTestVisible = false
+        };
+
+        host.Children.Add(new System.Windows.Shapes.Path
+        {
+            Stroke = _eventInk,
+            StrokeThickness = 2.4,
+            StrokeStartLineCap = PenLineCap.Round,
+            StrokeEndLineCap = PenLineCap.Round,
+            StrokeLineJoin = PenLineJoin.Round,
+            Data = HandDrawnGeometry.CreateCircle(
+                new Rect(1.5, 1.5, diameter - 3, diameter - 3),
+                dayNumber),
+            IsHitTestVisible = false
+        });
+
+        var textLeft = (diameter - tw) / 2;
+        var textTop = (diameter - th) / 2 - daySize * 0.06;
+
+        foreach (var (dx, dy) in new (double, double)[]
+                 { (-1.1, 0), (1.1, 0), (0, -1.1), (0, 1.1) })
+        {
+            var halo = MakeDayText(new SolidColorBrush(Color.FromArgb(200, 255, 252, 248)));
+            Canvas.SetLeft(halo, textLeft + dx);
+            Canvas.SetTop(halo, textTop + dy);
+            host.Children.Add(halo);
+        }
+
+        var dayText = MakeDayText(_dayNumberBrush);
+        Canvas.SetLeft(dayText, textLeft);
+        Canvas.SetTop(dayText, textTop);
+        host.Children.Add(dayText);
+
+        var x = alignCenter
+            ? cellLeft + (cellWidth - diameter) / 2
+            : cellLeft + 4;
+        var y = cellTop + 3;
+
+        Canvas.SetLeft(host, x);
+        Canvas.SetTop(host, y);
+        Panel.SetZIndex(host, z);
+        EventOverlay.Children.Add(host);
     }
 
     private static TextBlock CreateEventLabel(string text, double fontSize, double maxWidth, Brush foreground) =>
@@ -442,14 +466,17 @@ public partial class CalendarPageControl : UserControl
                 Math.Max(1, slot.Bounds.Width * width),
                 Math.Max(1, slot.Bounds.Height * height));
 
+            var borderBrush = BrushOf(_theme.PhotoBorderColorHex, "#FFFFFF");
+            var borderThickness = Math.Max(0, _theme.PhotoBorderThickness);
+            var cornerRadius = Math.Max(0, _theme.PhotoCornerRadius);
             var frame = new Border
             {
                 Width = rect.Width,
                 Height = rect.Height,
-                CornerRadius = new CornerRadius(2),
-                BorderBrush = Brushes.White,
-                BorderThickness = new Thickness(2),
-                Background = Brushes.White,
+                CornerRadius = new CornerRadius(cornerRadius),
+                BorderBrush = borderBrush,
+                BorderThickness = new Thickness(borderThickness),
+                Background = borderBrush,
                 ClipToBounds = true,
                 Effect = new System.Windows.Media.Effects.DropShadowEffect
                 {
@@ -685,14 +712,30 @@ public partial class CalendarPageControl : UserControl
             FontWeight = _style.BoldDays ? FontWeights.Bold : FontWeights.SemiBold,
             Foreground = _dayNumberBrush,
             HorizontalAlignment = HorizontalAlignment.Center,
-            VerticalAlignment = VerticalAlignment.Center,
-            Margin = new Thickness(_style.CircularDayBadge ? 0 : 6, 3, _style.CircularDayBadge ? 0 : 6, 3)
+            VerticalAlignment = VerticalAlignment.Center
         };
 
-        if (_style.CircularDayBadge)
+        if (cell.HasEvents)
         {
+            // Invisible spacer — circle + digit are stamped together on the event overlay
+            // so the number stays perfectly centered in the ring (above event ink).
+            dayText.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
+            var size = dayText.DesiredSize;
+            var diameter = Math.Max(Math.Max(size.Width, size.Height) + 18, 30);
+            dayPanel.Children.Add(new Border
+            {
+                Width = diameter,
+                Height = diameter,
+                Margin = new Thickness(2, 1, 0, 0),
+                Opacity = 0,
+                IsHitTestVisible = false
+            });
+        }
+        else if (_style.CircularDayBadge)
+        {
+            dayText.Margin = new Thickness(0);
             var badgeSize = Math.Max(28, daySize + 14);
-            var badge = new Border
+            dayPanel.Children.Add(new Border
             {
                 Width = badgeSize,
                 Height = badgeSize,
@@ -704,30 +747,12 @@ public partial class CalendarPageControl : UserControl
                 BorderThickness = new Thickness(1),
                 Child = dayText,
                 Margin = new Thickness(2)
-            };
-            dayPanel.Children.Add(badge);
+            });
         }
         else
         {
+            dayText.Margin = new Thickness(6, 3, 6, 3);
             dayPanel.Children.Add(dayText);
-        }
-
-        if (cell.HasEvents)
-        {
-            dayText.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
-            var size = dayText.DesiredSize;
-            var circleRect = new Rect(-4, -3, Math.Max(34, size.Width + 18), Math.Max(34, size.Height + 16));
-            var path = new System.Windows.Shapes.Path
-            {
-                Stroke = _eventInk,
-                StrokeThickness = 2.4,
-                StrokeStartLineCap = PenLineCap.Round,
-                StrokeEndLineCap = PenLineCap.Round,
-                StrokeLineJoin = PenLineJoin.Round,
-                Data = HandDrawnGeometry.CreateCircle(circleRect, cell.Date!.Value.DayNumber),
-                IsHitTestVisible = false
-            };
-            dayPanel.Children.Insert(0, path);
         }
 
         Grid.SetRow(dayPanel, 0);

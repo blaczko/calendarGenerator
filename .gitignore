@@ -24,6 +24,12 @@ Desktop.ini
 *.pdf
 !docs/**/*.pdf
 
+## Google Apps Script / clasp
+google-apps-script/node_modules/
+google-apps-script/.clasp.json
+google-apps-script/.clasp-deploy.json
+google-apps-script/pipeline.config.json
+
 ## Calendar Order Platform (Node)
 calendar-order-platform/**/node_modules/
 calendar-order-platform/**/dist/
