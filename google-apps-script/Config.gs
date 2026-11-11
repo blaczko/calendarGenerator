@@ -28,9 +28,8 @@ var APP_CONFIG = {
   //   .../exec?page=share
   // Prefer a public image URL (GitHub raw / Pages / CDN). Drive "uc?export=view"
   // and Apps Script ?page=shareImage usually fail for Facebook.
-  // Public JPG for Facebook (NOT a Drive link). After GitHub Pages is on:
-  // https://blaczko.github.io/calendarGenerator/share/og.jpg
-  SHARE_IMAGE_PUBLIC_URL: 'https://blaczko.github.io/calendarGenerator/share/og.jpg',
+  // Public JPG for Facebook (NOT a Drive link). GitHub Pages custom domain:
+  SHARE_IMAGE_PUBLIC_URL: 'https://zataipixel.ro/share/og.jpg',
   // Optional: upload share-preview.jpg into the Naptar Drive root, or set ID
   // (used only by ?page=shareImage, never as a Drive open-in-browser link):
   SHARE_IMAGE_FILE_ID: '',
