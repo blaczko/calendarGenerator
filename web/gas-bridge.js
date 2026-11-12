@@ -1,9 +1,29 @@
 /**
- * Emulates google.script.run for a static frontend hosted on Cloudflare Pages.
- * Calls same-origin /api which proxies to Apps Script doPost JSON API.
+ * Emulates google.script.run for Cloudflare Pages.
+ * Browser → POST /api → Apps Script doPost JSON API.
  */
 (function (global) {
   var apiBase = (global.APP_CONFIG && global.APP_CONFIG.apiBase) || '/api';
+
+  var ACTIONS = [
+    'getPublicConfig',
+    'createOrder',
+    'submitOrder',
+    'getOrderByToken',
+    'getOrderReviewByToken',
+    'getOrderReviewByOrderId',
+    'updateOrder',
+    'updateOrderByOrderId',
+    'finalizeOrder',
+    'uploadPhoto',
+    'uploadPhotosBatch',
+    'uploadPhotosBatchByOrderId',
+    'deletePhoto',
+    'deletePhotoByOrderId',
+    'adminLogin',
+    'adminListOrders',
+    'adminSetStatus'
+  ];
 
   function callAction(action, args) {
     return fetch(apiBase, {
@@ -32,38 +52,33 @@
   function createRunner() {
     var successHandler = null;
     var failureHandler = null;
+    var api = {};
 
-    function fail(err) {
-      var error = err instanceof Error ? err : new Error(String(err));
-      if (failureHandler) failureHandler(error);
-      else console.error(error);
-    }
-
-    var api = {
-      withSuccessHandler: function (fn) {
-        successHandler = fn;
-        return api;
-      },
-      withFailureHandler: function (fn) {
-        failureHandler = fn;
-        return api;
-      }
+    api.withSuccessHandler = function (fn) {
+      successHandler = fn;
+      return api;
+    };
+    api.withFailureHandler = function (fn) {
+      failureHandler = fn;
+      return api;
     };
 
-    return new Proxy(api, {
-      get: function (target, prop) {
-        if (prop in target) return target[prop];
-        if (typeof prop !== 'string' || prop.startsWith('_')) return undefined;
-        return function () {
-          var args = Array.prototype.slice.call(arguments);
-          callAction(prop, args)
-            .then(function (result) {
-              if (successHandler) successHandler(result);
-            })
-            .catch(fail);
-        };
-      }
+    ACTIONS.forEach(function (name) {
+      api[name] = function () {
+        var args = Array.prototype.slice.call(arguments);
+        callAction(name, args)
+          .then(function (result) {
+            if (successHandler) successHandler(result);
+          })
+          .catch(function (err) {
+            var error = err instanceof Error ? err : new Error(String(err));
+            if (failureHandler) failureHandler(error);
+            else console.error(error);
+          });
+      };
     });
+
+    return api;
   }
 
   global.google = global.google || {};
@@ -75,5 +90,5 @@
     }
   });
 
-  global.NaptarApi = { callAction: callAction, apiBase: apiBase };
+  global.NaptarApi = { callAction: callAction, apiBase: apiBase, actions: ACTIONS };
 })(window);
