@@ -1,17 +1,14 @@
 /**
- * Google Apps Script multi-step order API (Drive + Sheets).
- * Requires Config.gs. Redeploy (new version) after updating this file.
+ * Google Apps Script JSON API backend (Drive + Sheets).
+ * Frontend lives on Cloudflare Pages: https://naptar-web.pages.dev/
+ * Requires Config.gs. Redeploy after updating this file.
  *
- * Pages (?page=):
- *   customer (default) – order wizard
- *   admin              – admin dashboard
- *   review             – order review / edit (token or orderId)
- *   lookup             – enter order number → opens review
- *
- * Office walk-in flag (customer page):
- *   ?officeorder=true
- * Marks the order as directFromOffice in megrendeles.json + Sheets.
- * Office UI is shown only when this flag is present.
+ * doPost JSON: { "action": "createOrder", "args": [ ... ] }
+ * doGet:
+ *   ?api=ping              – health check
+ *   ?page=previewServe     – watermarked preview strip (HTML img)
+ *   ?page=shareImage       – optional OG image blob
+ *   anything else          – redirect to Cloudflare frontend
  */
 
 var MONTH_FOLDERS = [
@@ -20,6 +17,10 @@ var MONTH_FOLDERS = [
 ];
 var MAX_PHOTOS_PER_MONTH = 6;
 var PREVIEW_FILE_NAME = 'preview_strip.jpg';
+/** Public Cloudflare Pages origin (UI). Old /exec HTML routes redirect here. */
+var FRONTEND_ORIGIN = 'https://naptar-web.pages.dev';
+/** GitHub Pages share landing (Facebook OG / in-app browser handoff). */
+var SHARE_LANDING_URL = 'https://blaczko.github.io/calendarGenerator/share/';
 
 function cfg_() {
   return getAppConfig();
@@ -132,7 +133,7 @@ function dispatchExternalApi_(action, args) {
 
 function doGet(e) {
   var params = cleanRequestParams_(e);
-  var page = params.page || 'customer';
+  var page = params.page || '';
   // Reuse cleaned params for downstream helpers that read e.parameter.
   e = e || {};
   e.parameter = params;
@@ -154,72 +155,37 @@ function doGet(e) {
     return serveShareImage_();
   }
 
-  // Lightweight share landing (better link preview target than deep wizard URLs).
+  // Old share / UI routes → public frontends (no HtmlService templates left).
   if (page === 'share') {
-    return serveShareLanding_();
+    return htmlRedirect_(SHARE_LANDING_URL);
   }
 
-  // Review + lookup live inside Customer.html so only Customer/Admin need to exist in the project.
-  var file = page === 'admin' ? 'Admin' : 'Customer';
-
-  var template = HtmlService.createTemplateFromFile(file);
-  var config = cfg_();
-  var webAppUrl = '';
-  try {
-    webAppUrl = ScriptApp.getService().getUrl() || '';
-  } catch (err) {
-    webAppUrl = '';
-  }
-
-  var share = buildShareMeta_(webAppUrl, page);
-
-  // Everything the HTML needs lives under `config` (avoid bare template vars — undeclared ones throw).
-  template.config = {
-    rootFolderName: config.ROOT_FOLDER_NAME,
-    spreadsheetName: config.SPREADSHEET_NAME,
-    ownerEmail: config.OWNER_EMAIL,
-    maxPhotosPerMonth: MAX_PHOTOS_PER_MONTH,
-    webAppUrl: webAppUrl,
-    page: page,
-    orderId: params.orderId || '',
-    token: params.token || '',
-    office: isOfficeParam_(e),
-    ogTitle: share.title,
-    ogDescription: share.description,
-    ogImageUrl: share.imageUrl,
-    ogUrl: share.url
-  };
-
-  return template
-    .evaluate()
-    .setTitle(share.title)
-    .addMetaTag('viewport', 'width=device-width, initial-scale=1, viewport-fit=cover')
-    .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
+  return htmlRedirect_(buildFrontendUrl_(params, e));
 }
 
-function buildShareMeta_(webAppUrl, page) {
-  var config = cfg_();
-  var title = config.OG_TITLE || 'Családi naptár rendelés';
-  var description = config.OG_DESCRIPTION ||
-    'Személyre szabott, nyomtatott 12 oldalas A4 naptár a saját fényképeiddel — 60 RON.';
-  if (page === 'lookup') title = 'Rendelés keresése';
-  if (page === 'review') title = 'Rendelés áttekintése';
-  if (page === 'admin') title = 'Naptár admin';
+function buildFrontendUrl_(params, e) {
+  var q = [];
+  var page = params.page || 'customer';
+  if (page === 'admin') page = 'customer'; // admin HTML removed; use API later
+  q.push('page=' + encodeURIComponent(page));
+  if (params.orderId) q.push('orderId=' + encodeURIComponent(params.orderId));
+  if (params.token) q.push('token=' + encodeURIComponent(params.token));
+  if (isOfficeParam_(e)) q.push('officeorder=true');
+  return FRONTEND_ORIGIN + '/?' + q.join('&');
+}
 
-  var url = webAppUrl || '';
-  // Prefer the dedicated share landing for social posts.
-  if (url) {
-    url = url + (url.indexOf('?') >= 0 ? '&' : '?') + 'page=share';
-  }
-  var imageUrl = resolveShareImagePublicUrl_(webAppUrl);
-
-  return {
-    title: title,
-    description: description,
-    url: url,
-    imageUrl: imageUrl,
-    orderUrl: webAppUrl || ''
-  };
+function htmlRedirect_(url) {
+  var safe = String(url || FRONTEND_ORIGIN);
+  var escaped = escapeHtml_(safe);
+  var js = JSON.stringify(safe);
+  return HtmlService.createHtmlOutput(
+    '<!DOCTYPE html><html><head><meta charset="utf-8" />' +
+    '<meta http-equiv="refresh" content="0;url=' + escaped + '" />' +
+    '<script>location.replace(' + js + ');</script>' +
+    '</head><body style="font-family:sans-serif;padding:24px">' +
+    '<p>Átirányítás… <a href="' + escaped + '">Kattintson ide</a>.</p>' +
+    '</body></html>'
+  ).setTitle('Átirányítás');
 }
 
 function ensurePublicShareImage_(file) {
@@ -284,73 +250,6 @@ function serveShareImage_() {
   }
   // doGet cannot return a raw Blob — must be HtmlOutput / TextOutput.
   return htmlImageOutput_(file, 'Megosztási kép');
-}
-
-/**
- * Standalone HTML (not the HtmlService iframe wrapper of a template file) so
- * Open Graph crawlers can read title/description/image more reliably.
- * Post this URL on Facebook: .../exec?page=share
- */
-function serveShareLanding_() {
-  var webAppUrl = '';
-  try {
-    webAppUrl = ScriptApp.getService().getUrl() || '';
-  } catch (err) {
-    webAppUrl = '';
-  }
-  var share = buildShareMeta_(webAppUrl, 'share');
-  var orderUrl = share.orderUrl || webAppUrl || '#';
-  var title = escapeHtml_(share.title);
-  var description = escapeHtml_(share.description);
-  var imageUrl = escapeHtml_(share.imageUrl);
-  var pageUrl = escapeHtml_(webAppUrl ? (webAppUrl + (webAppUrl.indexOf('?') >= 0 ? '&' : '?') + 'page=share') : '');
-
-  // ContentService (not HtmlService): Facebook crawlers must see OG tags in the
-  // top-level HTML. HtmlService buries them inside an iframe sandbox string.
-  var html =
-    '<!DOCTYPE html><html lang="hu"><head>' +
-    '<meta charset="utf-8" />' +
-    '<meta name="viewport" content="width=device-width, initial-scale=1" />' +
-    '<title>' + title + '</title>' +
-    '<meta name="description" content="' + description + '" />' +
-    '<meta property="og:type" content="website" />' +
-    '<meta property="og:site_name" content="Családi naptár" />' +
-    '<meta property="og:title" content="' + title + '" />' +
-    '<meta property="og:description" content="' + description + '" />' +
-    '<meta property="og:url" content="' + pageUrl + '" />' +
-    (imageUrl
-      ? '<meta property="og:image" content="' + imageUrl + '" />' +
-        '<meta property="og:image:secure_url" content="' + imageUrl + '" />' +
-        '<meta property="og:image:width" content="1200" />' +
-        '<meta property="og:image:height" content="630" />' +
-        '<meta name="twitter:image" content="' + imageUrl + '" />' +
-        '<link rel="image_src" href="' + imageUrl + '" />'
-      : '') +
-    '<meta name="twitter:card" content="summary_large_image" />' +
-    '<meta name="twitter:title" content="' + title + '" />' +
-    '<meta name="twitter:description" content="' + description + '" />' +
-    '<style>' +
-    'body{margin:0;font-family:Georgia,serif;background:linear-gradient(160deg,#f7f1e8,#efe4d6);color:#2a241c}' +
-    '.wrap{max-width:640px;margin:0 auto;padding:28px 16px 48px}' +
-    '.card{background:#fffaf4;border:1px solid #e4d8c8;border-radius:24px;overflow:hidden;box-shadow:0 18px 50px rgba(80,50,20,.08)}' +
-    '.hero{background:linear-gradient(120deg,#3d2a1f,#8a3c1c 45%,#c47a3a);color:#fff8f1;padding:28px 24px}' +
-    '.hero h1{margin:0;font-size:1.8rem;line-height:1.2}' +
-    '.hero p{margin:10px 0 0;opacity:.92}' +
-    '.body{padding:22px 24px 28px}' +
-    '.price{font-size:1.6rem;font-weight:700;margin:0 0 8px}' +
-    '.muted{color:#6b6258;margin:0 0 18px}' +
-    '.btn{display:inline-block;background:#b4532a;color:#fff;text-decoration:none;padding:12px 18px;border-radius:12px;font-weight:700}' +
-    '.preview{display:block;width:100%;height:auto;border-bottom:1px solid #e4d8c8}' +
-    '</style></head><body><div class="wrap"><div class="card">' +
-    (imageUrl ? '<img class="preview" src="' + imageUrl + '" alt="' + title + '" />' : '') +
-    '<div class="hero"><h1>' + title + '</h1><p>' + description + '</p></div>' +
-    '<div class="body">' +
-    '<p class="price">60 RON</p>' +
-    '<p class="muted">12 oldalas nyomtatott A4 naptár · saját fényképek · névnapok és események</p>' +
-    '<a class="btn" href="' + escapeHtml_(orderUrl) + '">Megrendelés indítása</a>' +
-    '</div></div></div></body></html>';
-
-  return ContentService.createTextOutput(html).setMimeType(ContentService.MimeType.HTML);
 }
 
 function escapeHtml_(s) {

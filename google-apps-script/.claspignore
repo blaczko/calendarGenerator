@@ -4,9 +4,11 @@ package.json
 package-lock.json
 scripts/**
 README.md
-social-share.html
 .clasp.json.example
 .clasp-deploy.json
 .clasp-deploy.json.example
+pipeline.config.json
+pipeline.config.example.json
 .git/**
 **/*.md
+**/*.html
