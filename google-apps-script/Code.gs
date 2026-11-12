@@ -55,12 +55,94 @@ function cleanRequestParams_(e) {
   return out;
 }
 
+/**
+ * JSON API for external frontends (Cloudflare Pages → Worker/Pages Function → here).
+ * Body: { "action": "createOrder", "args": [ payload ] }
+ * Response: { "ok": true, "result": ... } or { "ok": false, "error": "..." }
+ */
+function doPost(e) {
+  return apiJsonRespond_(function () {
+    if (!e || !e.postData || !e.postData.contents) {
+      throw new Error('Hiányzó kérés törzs.');
+    }
+    var body = JSON.parse(e.postData.contents);
+    var action = String((body && body.action) || '');
+    var args = (body && body.args) || [];
+    if (!Array.isArray(args)) args = [args];
+    return dispatchExternalApi_(action, args);
+  });
+}
+
+function apiJsonRespond_(fn) {
+  try {
+    var result = fn();
+    return ContentService
+      .createTextOutput(JSON.stringify({ ok: true, result: result }))
+      .setMimeType(ContentService.MimeType.JSON);
+  } catch (err) {
+    return ContentService
+      .createTextOutput(JSON.stringify({
+        ok: false,
+        error: String((err && err.message) || err || 'Ismeretlen hiba')
+      }))
+      .setMimeType(ContentService.MimeType.JSON);
+  }
+}
+
+function dispatchExternalApi_(action, args) {
+  switch (action) {
+    case 'getPublicConfig':
+      return getPublicConfig();
+    case 'createOrder':
+      return createOrder(args[0]);
+    case 'submitOrder':
+      return submitOrder(args[0]);
+    case 'getOrderByToken':
+      return getOrderByToken(args[0]);
+    case 'getOrderReviewByToken':
+      return getOrderReviewByToken(args[0]);
+    case 'getOrderReviewByOrderId':
+      return getOrderReviewByOrderId(args[0]);
+    case 'updateOrder':
+      return updateOrder(args[0], args[1]);
+    case 'updateOrderByOrderId':
+      return updateOrderByOrderId(args[0], args[1]);
+    case 'finalizeOrder':
+      return finalizeOrder(args[0], args[1]);
+    case 'uploadPhoto':
+      return uploadPhoto(args[0], args[1], args[2]);
+    case 'uploadPhotosBatch':
+      return uploadPhotosBatch(args[0], args[1], args[2]);
+    case 'uploadPhotosBatchByOrderId':
+      return uploadPhotosBatchByOrderId(args[0], args[1], args[2]);
+    case 'deletePhoto':
+      return deletePhoto(args[0], args[1]);
+    case 'deletePhotoByOrderId':
+      return deletePhotoByOrderId(args[0], args[1]);
+    case 'adminLogin':
+      return adminLogin(args[0]);
+    case 'adminListOrders':
+      return adminListOrders(args[0], args[1]);
+    case 'adminSetStatus':
+      return adminSetStatus(args[0], args[1], args[2]);
+    default:
+      throw new Error('Ismeretlen művelet: ' + action);
+  }
+}
+
 function doGet(e) {
   var params = cleanRequestParams_(e);
   var page = params.page || 'customer';
   // Reuse cleaned params for downstream helpers that read e.parameter.
   e = e || {};
   e.parameter = params;
+
+  // Lightweight JSON ping for the Cloudflare proxy health check.
+  if (params.api === 'ping') {
+    return apiJsonRespond_(function () {
+      return { ok: true, service: 'naptar-api', ts: new Date().toISOString() };
+    });
+  }
 
   // Serve preview image as HTML (Drive hotlinks often break in browsers).
   if (page === 'previewServe') {
@@ -198,10 +280,10 @@ function serveShareImage_() {
       '<p>Töltse fel a <strong>share-preview.jpg</strong> fájlt a Naptar Drive gyökérmappába ' +
       '(ajánlott méret kb. 1200×630), vagy állítsa be a <code>SHARE_IMAGE_FILE_ID</code> értéket a Config.gs-ben.</p>' +
       '</body></html>'
-    );
+    ).setTitle('Hiányzó megosztási kép');
   }
-  // Returning a Blob from doGet serves the image with the correct MIME type for crawlers.
-  return file.getBlob().setName('naptar-share-preview.jpg');
+  // doGet cannot return a raw Blob — must be HtmlOutput / TextOutput.
+  return htmlImageOutput_(file, 'Megosztási kép');
 }
 
 /**
@@ -284,8 +366,12 @@ function getPublicConfig() {
     supportedYears: [2026, 2027, 2028, 2029],
     maxPhotosPerMonth: MAX_PHOTOS_PER_MONTH,
     calendarFormats: [
-      { value: 'portrait', labelHu: 'Álló (portrait) – A4' },
-      { value: 'landscape', labelHu: 'Fekvő (landscape) – A4' }
+      { value: 'portrait', labelHu: 'Álló (portrait)' },
+      { value: 'landscape', labelHu: 'Fekvő (landscape)' }
+    ],
+    paperSizes: [
+      { value: 'A4', labelHu: 'A4' },
+      { value: 'A3', labelHu: 'A3' }
     ],
     months: [
       'Január', 'Február', 'Március', 'Április', 'Május', 'Június',
@@ -329,6 +415,7 @@ function createOrder(payload) {
     calendarYear: Number(payload.calendarYear),
     calendarLanguage: payload.calendarLanguage || 'hu',
     calendarFormatPref: payload.calendarFormatPref || 'portrait',
+    paperSize: normalizePaperSize_(payload.paperSize),
     comments: payload.comments || '',
     events: sanitizeEvents_(payload.events || [], Number(payload.calendarYear)),
     photos: [],
@@ -405,6 +492,7 @@ function updateOrderResolved_(ctx, payload) {
   if (payload.email != null) record.email = payload.email;
   if (payload.calendarYear != null) record.calendarYear = Number(payload.calendarYear);
   if (payload.calendarFormatPref != null) record.calendarFormatPref = payload.calendarFormatPref;
+  if (payload.paperSize != null) record.paperSize = normalizePaperSize_(payload.paperSize);
   if (payload.calendarLanguage != null) record.calendarLanguage = payload.calendarLanguage;
   if (payload.comments != null) record.comments = payload.comments;
   if (payload.events) {
@@ -841,19 +929,73 @@ function findNamedFile_(folder, name) {
 }
 
 /**
- * Serves the watermarked preview strip as a raw image blob.
- * Used by the review page via ?page=previewServe&orderId=...
- * Returning a Blob from doGet sends the correct image MIME type for <img> tags.
+ * Serves the watermarked preview strip for the review page iframe
+ * (?page=previewServe&orderId=... / token=...).
+ * Web apps cannot return a raw Blob from doGet — wrap as HtmlOutput.
  */
 function servePreviewStrip_(e) {
-  var token = (e && e.parameter && e.parameter.token) || '';
-  var orderId = (e && e.parameter && e.parameter.orderId) || '';
-  var ctx = token ? loadOrderCtx_(token) : loadOrderCtxByOrderId_(orderId);
-  var file = findPreviewFile_(ctx.orderFolder, ctx.metaFolder);
-  if (!file) {
-    throw new Error('Az előnézet még nem készült el ehhez a rendeléshez.');
+  try {
+    var token = (e && e.parameter && e.parameter.token) || '';
+    var orderId = (e && e.parameter && e.parameter.orderId) || '';
+    if (!token && !orderId) {
+      return htmlMessageOutput_('Hiányzik a rendelésszám vagy a token.', 'Előnézet');
+    }
+    var ctx = token ? loadOrderCtx_(token) : loadOrderCtxByOrderId_(orderId);
+    var file = findPreviewFile_(ctx.orderFolder, ctx.metaFolder);
+    if (!file) {
+      return htmlMessageOutput_(
+        'Az előnézet még nem készült el ehhez a rendeléshez.',
+        'Előnézet'
+      );
+    }
+    return htmlImageOutput_(file, 'Naptár előnézet');
+  } catch (err) {
+    return htmlMessageOutput_(
+      (err && err.message) ? err.message : String(err),
+      'Előnézet hiba'
+    );
   }
-  return file.getBlob().setName('preview.jpg');
+}
+
+/**
+ * HtmlOutput page that displays a Drive image.
+ * Prefer a public Drive URL (large previews blow HtmlService base64 limits).
+ * Never return a raw Blob from doGet — that yields
+ * "returned value is not a supported return type".
+ */
+function htmlImageOutput_(file, title) {
+  try {
+    file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+  } catch (eShare) {}
+
+  var id = file.getId();
+  var primary = 'https://lh3.googleusercontent.com/d/' + id + '=w2400';
+  var fallback = 'https://drive.google.com/thumbnail?id=' + id + '&sz=w2400';
+  var html =
+    '<!DOCTYPE html><html><head><meta charset="utf-8" />' +
+    '<meta name="viewport" content="width=device-width, initial-scale=1" />' +
+    '<title>' + escapeHtml_(title || 'Előnézet') + '</title>' +
+    '<style>html,body{margin:0;background:#1a1510;min-height:100%}' +
+    'img{display:block;width:100%;height:auto}</style></head><body>' +
+    '<img alt="' + escapeHtml_(title || 'előnézet') + '" src="' + primary + '" ' +
+    'onerror="this.onerror=null;this.src=\'' + fallback + '\'" />' +
+    '</body></html>';
+  return HtmlService.createHtmlOutput(html)
+    .setTitle(title || 'Előnézet')
+    .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
+}
+
+function htmlMessageOutput_(message, title) {
+  var html =
+    '<!DOCTYPE html><html><head><meta charset="utf-8" />' +
+    '<meta name="viewport" content="width=device-width, initial-scale=1" />' +
+    '<title>' + escapeHtml_(title || 'Üzenet') + '</title>' +
+    '<style>body{margin:0;font-family:Georgia,serif;background:#f7f1e8;color:#2a241c;' +
+    'padding:24px;line-height:1.45}</style></head><body><p>' +
+    escapeHtml_(message) + '</p></body></html>';
+  return HtmlService.createHtmlOutput(html)
+    .setTitle(title || 'Üzenet')
+    .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
 }
 
 function readRecord_(metaFolder) {
@@ -887,6 +1029,7 @@ function publicOrder_(record) {
     calendarYear: record.calendarYear,
     calendarLanguage: record.calendarLanguage,
     calendarFormatPref: record.calendarFormatPref,
+    paperSize: normalizePaperSize_(record.paperSize),
     comments: record.comments,
     events: record.events || [],
     photos: record.photos || [],
@@ -929,6 +1072,10 @@ function openOrdersSheet_() {
   return ss.getSheets()[0];
 }
 
+function normalizePaperSize_(value) {
+  return String(value || '').toUpperCase() === 'A3' ? 'A3' : 'A4';
+}
+
 function sheetRowValues_(record) {
   return [
     record.orderId,
@@ -942,7 +1089,9 @@ function sheetRowValues_(record) {
     (record.events || []).length,
     record.driveFolderUrl,
     record.updatedAt || record.createdAt,
-    record.directFromOffice ? 'YES' : 'NO'
+    record.directFromOffice ? 'YES' : 'NO',
+    normalizePaperSize_(record.paperSize),
+    record.calendarFormatPref || 'portrait'
   ];
 }
 
@@ -952,13 +1101,19 @@ function appendSheetRow_(record) {
     sheet.appendRow([
       'Order ID', 'Submission date', 'Customer name', 'Phone number', 'Email', 'Calendar year',
       'Order status', 'Number of photographs', 'Number of events', 'Google Drive folder URL', 'Last modification date',
-      'Direct from office'
+      'Direct from office', 'Paper size', 'Orientation'
     ]);
   } else {
-    // Backfill header for older sheets that only had 11 columns.
-    var headers = sheet.getRange(1, 1, 1, Math.max(12, sheet.getLastColumn())).getValues()[0];
+    // Backfill header for older sheets that only had 11/12 columns.
+    var headers = sheet.getRange(1, 1, 1, Math.max(14, sheet.getLastColumn())).getValues()[0];
     if (!headers[11] || String(headers[11]).indexOf('office') < 0) {
       sheet.getRange(1, 12).setValue('Direct from office');
+    }
+    if (!headers[12] || String(headers[12]).toLowerCase().indexOf('paper') < 0) {
+      sheet.getRange(1, 13).setValue('Paper size');
+    }
+    if (!headers[13] || String(headers[13]).toLowerCase().indexOf('orient') < 0) {
+      sheet.getRange(1, 14).setValue('Orientation');
     }
   }
   sheet.appendRow(sheetRowValues_(record));
@@ -969,7 +1124,7 @@ function updateSheetRow_(record) {
   var data = sheet.getDataRange().getValues();
   for (var r = 1; r < data.length; r++) {
     if (String(data[r][0]) === String(record.orderId)) {
-      sheet.getRange(r + 1, 1, 1, 12).setValues([sheetRowValues_(record)]);
+      sheet.getRange(r + 1, 1, 1, 14).setValues([sheetRowValues_(record)]);
       return;
     }
   }

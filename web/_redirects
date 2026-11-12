@@ -1,0 +1,3 @@
+# Cloudflare Pages: SPA-style fallback not required (query routing on index.html).
+# Keep API on Pages Functions.
+/api /api 200
