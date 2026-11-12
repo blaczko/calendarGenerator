@@ -2,87 +2,95 @@
 <html lang="hu">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Google-fiók választása · Családi naptár</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Családi naptár</title>
   <meta name="robots" content="noindex" />
   <style>
     :root { --ink: #2a241c; --muted: #6b6258; --accent: #b4532a; --card: #fffaf4; --line: #e4d8c8; --blue: #1a73e8; }
     * { box-sizing: border-box; }
+    html, body { height: 100%; margin: 0; }
     body {
-      margin: 0;
       font-family: "Segoe UI", system-ui, sans-serif;
-      background: linear-gradient(160deg, #f7f1e8, #efe4d6);
+      background: #efe4d6;
       color: var(--ink);
+      display: flex;
+      flex-direction: column;
     }
-    .wrap { max-width: 520px; margin: 0 auto; padding: 28px 16px 48px; }
-    .card {
+    .bar {
+      flex: 0 0 auto;
       background: var(--card);
-      border: 1px solid var(--line);
-      border-radius: 20px;
-      padding: 22px 20px 24px;
-      box-shadow: 0 18px 50px rgba(80,50,20,.08);
+      border-bottom: 1px solid var(--line);
+      padding: 10px 12px 12px;
     }
-    h1 { margin: 0 0 8px; font-family: Georgia, serif; font-size: 1.45rem; line-height: 1.25; }
-    .lead { margin: 0 0 18px; color: var(--muted); font-size: 0.95rem; line-height: 1.45; }
-    .meta {
-      margin: 0 0 16px;
-      padding: 10px 12px;
-      border-radius: 10px;
-      background: #f3ebe0;
-      font-size: 0.9rem;
-      word-break: break-all;
+    .bar h1 {
+      margin: 0 0 4px;
+      font-family: Georgia, serif;
+      font-size: 1.05rem;
     }
-    .meta strong { display: block; margin-bottom: 2px; }
-    .btn {
-      display: block;
-      width: 100%;
-      text-align: center;
-      text-decoration: none;
+    .bar p { margin: 0 0 10px; color: var(--muted); font-size: 0.82rem; line-height: 1.35; }
+    .meta { font-size: 0.8rem; color: var(--ink); margin-bottom: 8px; word-break: break-all; }
+    .slots { display: flex; flex-wrap: wrap; gap: 6px; }
+    .slots button, .slots a {
       border: 0;
-      border-radius: 12px;
-      padding: 13px 16px;
+      border-radius: 999px;
+      padding: 8px 12px;
       font: inherit;
+      font-size: 0.82rem;
       font-weight: 700;
       cursor: pointer;
-      margin-top: 10px;
+      text-decoration: none;
+      color: #fff;
+      background: var(--accent);
     }
-    .btn-primary { background: var(--blue); color: #fff; }
-    .btn-accent { background: var(--accent); color: #fff; }
-    .btn-soft { background: #efe4d6; color: var(--ink); }
-    .grid { display: grid; gap: 8px; margin-top: 8px; }
-    @media (min-width: 420px) { .grid { grid-template-columns: 1fr 1fr; } }
-    .hint { margin: 16px 0 0; font-size: 0.85rem; color: var(--muted); line-height: 1.45; }
-    .hint strong { color: var(--ink); }
+    .slots button.active { background: var(--blue); }
+    .slots a.soft { background: #d9cbb8; color: var(--ink); }
+    .frame-wrap {
+      flex: 1 1 auto;
+      min-height: 0;
+      background: #fff;
+      position: relative;
+    }
+    .frame-wrap iframe {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      border: 0;
+      background: #fffaf4;
+    }
+    .overlay {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      text-align: center;
+      background: #fffaf4;
+      color: var(--muted);
+      font-size: 0.95rem;
+      line-height: 1.45;
+    }
+    .overlay[hidden] { display: none !important; }
   </style>
 </head>
 <body>
-  <div class="wrap">
-    <div class="card">
-      <h1>Válassza ki a Google-fiókot</h1>
-      <p class="lead">
-        Több bejelentkezett Google-fiók esetén a Google gyakran elrontja a naptár linket.
-        Először válasszon fiókot, majd nyílik meg a rendelés.
-      </p>
-      <div class="meta" id="orderMeta" hidden>
-        <strong>Rendelés</strong>
-        <span id="orderLabel"></span>
-      </div>
-
-      <a class="btn btn-primary" id="chooserBtn" href="#">Google-fiók választó megnyitása</a>
-
-      <p class="hint" style="margin-top:18px"><strong>Vagy próbálja közvetlenül</strong> (1. = általában a fő fiók):</p>
-      <div class="grid" id="slotButtons"></div>
-
-      <a class="btn btn-soft" id="directBtn" href="#" style="margin-top:14px">Megnyitás fiókválasztó nélkül</a>
-
-      <p class="hint">
-        Ha üres / hibás oldalt kap: próbálja a következő fiók gombot, vagy nyissa meg
-        <strong>inkognitó</strong> ablakban. WhatsAppból: inkább Chrome / Safari böngészőben nyissa.
-      </p>
-    </div>
+  <div class="bar">
+    <h1>Családi naptár</h1>
+    <p>
+      A naptár itt nyílik meg (nem a hibás <code>/u/1/</code> Google linken).
+      Ha üres a tartalom, váltson fiókot alább — <strong>1. fiók</strong> általában a fő Google-fiók.
+    </p>
+    <div class="meta" id="orderMeta" hidden></div>
+    <div class="slots" id="slots"></div>
+  </div>
+  <div class="frame-wrap">
+    <div class="overlay" id="overlay">Válasszon Google-fiókot a betöltéshez…</div>
+    <iframe id="appFrame" title="Naptár webapp" allow="clipboard-read; clipboard-write"></iframe>
   </div>
   <script>
     (function () {
+      // Never open top-level /macros/u/N/ — that path crashes with multi-login.
       var REVIEW_ID = 'AKfycbyYmQGgwFshrVNfoZ4kX0KY8A4VJPndvfwmS9qFssUMi9BpCfsSf4zMNA2YFzms_bib';
       var ORDER_ID = 'AKfycbwx0WrFHBjckGTiAsfqPCZbgBfCyPQeT64Xv1cuoC7Tz-oc0RlEn-h6I6j0-hnrOSwa';
 
@@ -91,56 +99,75 @@
       var page = (params.get('page') || (orderId ? 'review' : 'customer')).trim();
       var token = (params.get('token') || '').trim();
       var deployment = (params.get('deployment') || '').trim().toLowerCase();
+      var startAuth = params.get('authuser');
+      if (startAuth == null || startAuth === '') startAuth = '0';
 
       var scriptId = deployment === 'order' || (page === 'customer' && !orderId)
         ? ORDER_ID
         : REVIEW_ID;
 
-      function buildTarget(opts) {
-        opts = opts || {};
+      var frame = document.getElementById('appFrame');
+      var overlay = document.getElementById('overlay');
+      var slots = document.getElementById('slots');
+      var activeAuth = null;
+
+      function buildEmbedUrl(authuser) {
         var q = new URLSearchParams();
-        if (opts.authuser != null && opts.authuser !== '') q.set('authuser', String(opts.authuser));
+        // authuser pins the Google session without rewriting to /macros/u/N/
+        q.set('authuser', String(authuser));
         if (page) q.set('page', page);
         if (orderId) q.set('orderId', orderId);
         if (token) q.set('token', token);
-        var path = opts.userIndex != null
-          ? '/macros/u/' + opts.userIndex + '/s/' + scriptId + '/exec'
-          : '/macros/s/' + scriptId + '/exec';
-        var qs = q.toString();
-        return 'https://script.google.com' + path + (qs ? '?' + qs : '');
+        return 'https://script.google.com/macros/s/' + scriptId + '/exec?' + q.toString();
       }
 
-      function withChooser(url) {
-        return 'https://accounts.google.com/AccountChooser?continue=' + encodeURIComponent(url);
+      function setActiveButton(authuser) {
+        var buttons = slots.querySelectorAll('[data-authuser]');
+        for (var i = 0; i < buttons.length; i++) {
+          buttons[i].classList.toggle('active', buttons[i].getAttribute('data-authuser') === String(authuser));
+        }
       }
 
-      var cleanTarget = buildTarget({});
-      document.getElementById('chooserBtn').href = withChooser(cleanTarget);
-      document.getElementById('directBtn').href = cleanTarget;
+      function loadAuthuser(authuser) {
+        activeAuth = String(authuser);
+        setActiveButton(activeAuth);
+        overlay.hidden = true;
+        overlay.textContent = 'Betöltés…';
+        // Cache-bust so switching slots reloads the iframe.
+        frame.src = buildEmbedUrl(activeAuth) + '&_=' + Date.now();
+      }
 
       if (orderId) {
-        document.getElementById('orderMeta').hidden = false;
-        document.getElementById('orderLabel').textContent = orderId + (page ? ' · ' + page : '');
+        var meta = document.getElementById('orderMeta');
+        meta.hidden = false;
+        meta.textContent = 'Rendelés: ' + orderId + (page ? ' · ' + page : '');
       }
 
-      var host = document.getElementById('slotButtons');
       for (var i = 0; i < 4; i++) {
         (function (idx) {
-          var a = document.createElement('a');
-          a.className = 'btn btn-accent';
-          a.textContent = (idx + 1) + '. Google-fiók';
-          a.href = buildTarget({ authuser: idx });
-          a.title = 'authuser=' + idx;
-          host.appendChild(a);
-
-          var b = document.createElement('a');
-          b.className = 'btn btn-soft';
-          b.textContent = (idx + 1) + '. fiók (/u/' + idx + ')';
-          b.href = buildTarget({ userIndex: idx });
-          b.title = '/macros/u/' + idx + '/';
-          host.appendChild(b);
+          var btn = document.createElement('button');
+          btn.type = 'button';
+          btn.setAttribute('data-authuser', String(idx));
+          btn.textContent = (idx + 1) + '. fiók';
+          btn.onclick = function () { loadAuthuser(idx); };
+          slots.appendChild(btn);
         })(i);
       }
+
+      var reload = document.createElement('button');
+      reload.type = 'button';
+      reload.textContent = 'Újratöltés';
+      reload.className = 'soft';
+      reload.style.background = '#d9cbb8';
+      reload.style.color = '#2a241c';
+      reload.onclick = function () {
+        if (activeAuth == null) loadAuthuser(startAuth);
+        else loadAuthuser(activeAuth);
+      };
+      slots.appendChild(reload);
+
+      // Auto-load primary account slot inside iframe (stays on github.io in the address bar).
+      loadAuthuser(startAuth);
     })();
   </script>
 </body>
