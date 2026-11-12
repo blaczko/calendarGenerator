@@ -62,6 +62,8 @@
   <script>
     (function () {
       var ORDER_URL = 'https://script.google.com/macros/s/AKfycbwx0WrFHBjckGTiAsfqPCZbgBfCyPQeT64Xv1cuoC7Tz-oc0RlEn-h6I6j0-hnrOSwa/exec';
+      // Intermediate picker (account chooser + authuser slots) — more reliable than deep-linking AccountChooser alone.
+      var OPEN_URL = 'https://blaczko.github.io/calendarGenerator/share/open.html?page=customer&deployment=order';
       var ua = navigator.userAgent || '';
       var isAndroid = /Android/i.test(ua);
       var isIOS = /iPhone|iPad|iPod/i.test(ua);
@@ -103,17 +105,17 @@
           hint.textContent = 'Link kimásolva. Illessze be a külső böngésző címsorába.';
         }
         if (navigator.clipboard && navigator.clipboard.writeText) {
-          navigator.clipboard.writeText(ORDER_URL).then(done).catch(function () {
-            window.prompt('Másolja a linket:', ORDER_URL);
+          navigator.clipboard.writeText(OPEN_URL).then(done).catch(function () {
+            window.prompt('Másolja a linket:', OPEN_URL);
           });
         } else {
-          window.prompt('Másolja a linket:', ORDER_URL);
+          window.prompt('Másolja a linket:', OPEN_URL);
         }
       }
 
-      // Desktop / normal mobile browser: Apps Script can load → go straight there.
+      // Desktop / normal mobile browser: pick Google account (if needed), then open Apps Script.
       if (!isInAppBrowser && !isBot) {
-        window.location.replace(ORDER_URL);
+        window.location.replace(OPEN_URL);
         return;
       }
 
@@ -128,13 +130,13 @@
           '<strong>Megnyitás külső böngészőben</strong>.';
         openBtn.onclick = function () {
           // Primary: hand off to Safari via iOS URL scheme (OS-level, not a fake dialog).
-          window.location.href = iosOpenSafari(ORDER_URL);
+          window.location.href = iosOpenSafari(OPEN_URL);
           // Fallback note after a moment if still on this page.
           setTimeout(function () {
             hint.innerHTML =
               'Ha Safari nem nyílt meg, próbálja a <strong>⋯ → Megnyitás külső böngészőben</strong> menüt, ' +
               'vagy a Link másolása gombot. Chrome-hoz: ' +
-              '<a href="' + iosOpenChrome(ORDER_URL) + '">Megnyitás Chrome-ban</a>.';
+              '<a href="' + iosOpenChrome(OPEN_URL) + '">Megnyitás Chrome-ban</a>.';
           }, 1200);
         };
         return;
@@ -145,13 +147,13 @@
         hint.textContent =
           'A telefon megkérdezheti, melyik böngészővel nyissa meg (Chrome, Firefox stb.).';
         openBtn.onclick = function () {
-          window.location.href = androidOpenChooser(ORDER_URL);
+          window.location.href = androidOpenChooser(OPEN_URL);
         };
         return;
       }
 
       openBtn.onclick = function () {
-        window.location.href = ORDER_URL;
+        window.location.href = OPEN_URL;
       };
     })();
   </script>
