@@ -1,0 +1,13 @@
+{
+  "name": "naptar-web",
+  "private": true,
+  "description": "Cloudflare Pages frontend for calendar orders (Apps Script backend)",
+  "scripts": {
+    "login": "wrangler login",
+    "deploy": "wrangler pages deploy . --project-name=naptar-web --commit-dirty=true",
+    "dev": "wrangler pages dev . --binding GAS_EXEC_URL=https://script.google.com/macros/s/AKfycbyYmQGgwFshrVNfoZ4kX0KY8A4VJPndvfwmS9qFssUMi9BpCfsSf4zMNA2YFzms_bib/exec"
+  },
+  "devDependencies": {
+    "wrangler": "^4.45.0"
+  }
+}

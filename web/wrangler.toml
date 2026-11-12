@@ -1,0 +1,7 @@
+name = "naptar-web"
+compatibility_date = "2025-11-12"
+pages_build_output_dir = "."
+
+# Used by functions/api.js (Pages Function → Apps Script doPost)
+[vars]
+GAS_EXEC_URL = "https://script.google.com/macros/s/AKfycbyYmQGgwFshrVNfoZ4kX0KY8A4VJPndvfwmS9qFssUMi9BpCfsSf4zMNA2YFzms_bib/exec"
