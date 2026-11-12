@@ -2,173 +2,21 @@
 <html lang="hu">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <title>Családi naptár</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Átirányítás…</title>
   <meta name="robots" content="noindex" />
-  <style>
-    :root { --ink: #2a241c; --muted: #6b6258; --accent: #b4532a; --card: #fffaf4; --line: #e4d8c8; --blue: #1a73e8; }
-    * { box-sizing: border-box; }
-    html, body { height: 100%; margin: 0; }
-    body {
-      font-family: "Segoe UI", system-ui, sans-serif;
-      background: #efe4d6;
-      color: var(--ink);
-      display: flex;
-      flex-direction: column;
-    }
-    .bar {
-      flex: 0 0 auto;
-      background: var(--card);
-      border-bottom: 1px solid var(--line);
-      padding: 10px 12px 12px;
-    }
-    .bar h1 {
-      margin: 0 0 4px;
-      font-family: Georgia, serif;
-      font-size: 1.05rem;
-    }
-    .bar p { margin: 0 0 10px; color: var(--muted); font-size: 0.82rem; line-height: 1.35; }
-    .meta { font-size: 0.8rem; color: var(--ink); margin-bottom: 8px; word-break: break-all; }
-    .slots { display: flex; flex-wrap: wrap; gap: 6px; }
-    .slots button, .slots a {
-      border: 0;
-      border-radius: 999px;
-      padding: 8px 12px;
-      font: inherit;
-      font-size: 0.82rem;
-      font-weight: 700;
-      cursor: pointer;
-      text-decoration: none;
-      color: #fff;
-      background: var(--accent);
-    }
-    .slots button.active { background: var(--blue); }
-    .slots a.soft { background: #d9cbb8; color: var(--ink); }
-    .frame-wrap {
-      flex: 1 1 auto;
-      min-height: 0;
-      background: #fff;
-      position: relative;
-    }
-    .frame-wrap iframe {
-      position: absolute;
-      inset: 0;
-      width: 100%;
-      height: 100%;
-      border: 0;
-      background: #fffaf4;
-    }
-    .overlay {
-      position: absolute;
-      inset: 0;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      padding: 24px;
-      text-align: center;
-      background: #fffaf4;
-      color: var(--muted);
-      font-size: 0.95rem;
-      line-height: 1.45;
-    }
-    .overlay[hidden] { display: none !important; }
-  </style>
-</head>
-<body>
-  <div class="bar">
-    <h1>Családi naptár</h1>
-    <p>
-      A naptár itt nyílik meg (nem a hibás <code>/u/1/</code> Google linken).
-      Ha üres a tartalom, váltson fiókot alább — <strong>1. fiók</strong> általában a fő Google-fiók.
-    </p>
-    <div class="meta" id="orderMeta" hidden></div>
-    <div class="slots" id="slots"></div>
-  </div>
-  <div class="frame-wrap">
-    <div class="overlay" id="overlay">Válasszon Google-fiókot a betöltéshez…</div>
-    <iframe id="appFrame" title="Naptár webapp" allow="clipboard-read; clipboard-write"></iframe>
-  </div>
   <script>
     (function () {
-      // Never open top-level /macros/u/N/ — that path crashes with multi-login.
-      var REVIEW_ID = 'AKfycbyYmQGgwFshrVNfoZ4kX0KY8A4VJPndvfwmS9qFssUMi9BpCfsSf4zMNA2YFzms_bib';
-      var ORDER_ID = 'AKfycbwx0WrFHBjckGTiAsfqPCZbgBfCyPQeT64Xv1cuoC7Tz-oc0RlEn-h6I6j0-hnrOSwa';
-
-      var params = new URLSearchParams(location.search || '');
-      var orderId = (params.get('orderId') || '').trim();
-      var page = (params.get('page') || (orderId ? 'review' : 'customer')).trim();
-      var token = (params.get('token') || '').trim();
-      var deployment = (params.get('deployment') || '').trim().toLowerCase();
-      var startAuth = params.get('authuser');
-      if (startAuth == null || startAuth === '') startAuth = '0';
-
-      var scriptId = deployment === 'order' || (page === 'customer' && !orderId)
-        ? ORDER_ID
-        : REVIEW_ID;
-
-      var frame = document.getElementById('appFrame');
-      var overlay = document.getElementById('overlay');
-      var slots = document.getElementById('slots');
-      var activeAuth = null;
-
-      function buildEmbedUrl(authuser) {
-        var q = new URLSearchParams();
-        // authuser pins the Google session without rewriting to /macros/u/N/
-        q.set('authuser', String(authuser));
-        if (page) q.set('page', page);
-        if (orderId) q.set('orderId', orderId);
-        if (token) q.set('token', token);
-        return 'https://script.google.com/macros/s/' + scriptId + '/exec?' + q.toString();
-      }
-
-      function setActiveButton(authuser) {
-        var buttons = slots.querySelectorAll('[data-authuser]');
-        for (var i = 0; i < buttons.length; i++) {
-          buttons[i].classList.toggle('active', buttons[i].getAttribute('data-authuser') === String(authuser));
-        }
-      }
-
-      function loadAuthuser(authuser) {
-        activeAuth = String(authuser);
-        setActiveButton(activeAuth);
-        overlay.hidden = true;
-        overlay.textContent = 'Betöltés…';
-        // Cache-bust so switching slots reloads the iframe.
-        frame.src = buildEmbedUrl(activeAuth) + '&_=' + Date.now();
-      }
-
-      if (orderId) {
-        var meta = document.getElementById('orderMeta');
-        meta.hidden = false;
-        meta.textContent = 'Rendelés: ' + orderId + (page ? ' · ' + page : '');
-      }
-
-      for (var i = 0; i < 4; i++) {
-        (function (idx) {
-          var btn = document.createElement('button');
-          btn.type = 'button';
-          btn.setAttribute('data-authuser', String(idx));
-          btn.textContent = (idx + 1) + '. fiók';
-          btn.onclick = function () { loadAuthuser(idx); };
-          slots.appendChild(btn);
-        })(i);
-      }
-
-      var reload = document.createElement('button');
-      reload.type = 'button';
-      reload.textContent = 'Újratöltés';
-      reload.className = 'soft';
-      reload.style.background = '#d9cbb8';
-      reload.style.color = '#2a241c';
-      reload.onclick = function () {
-        if (activeAuth == null) loadAuthuser(startAuth);
-        else loadAuthuser(activeAuth);
-      };
-      slots.appendChild(reload);
-
-      // Auto-load primary account slot inside iframe (stays on github.io in the address bar).
-      loadAuthuser(startAuth);
+      var target = 'https://naptar-web.pages.dev/';
+      var qs = location.search || '';
+      // Default to customer order flow when no query is present.
+      if (!qs || qs === '?') qs = '?page=customer';
+      location.replace(target + qs);
     })();
   </script>
+  <meta http-equiv="refresh" content="0;url=https://naptar-web.pages.dev/?page=customer" />
+</head>
+<body>
+  <p>Átirányítás a naptár oldalra… <a href="https://naptar-web.pages.dev/?page=customer">Kattintson ide</a>.</p>
 </body>
 </html>

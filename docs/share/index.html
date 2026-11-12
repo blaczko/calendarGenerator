@@ -61,9 +61,8 @@
   </div>
   <script>
     (function () {
-      var ORDER_URL = 'https://script.google.com/macros/s/AKfycbwx0WrFHBjckGTiAsfqPCZbgBfCyPQeT64Xv1cuoC7Tz-oc0RlEn-h6I6j0-hnrOSwa/exec';
-      // Intermediate picker (account chooser + authuser slots) — more reliable than deep-linking AccountChooser alone.
-      var OPEN_URL = 'https://blaczko.github.io/calendarGenerator/share/open.html?page=customer&deployment=order';
+      // Cloudflare Pages frontend (Apps Script stays as API backend).
+      var OPEN_URL = 'https://naptar-web.pages.dev/?page=customer';
       var ua = navigator.userAgent || '';
       var isAndroid = /Android/i.test(ua);
       var isIOS = /iPhone|iPad|iPod/i.test(ua);
