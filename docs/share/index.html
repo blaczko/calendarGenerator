@@ -6,9 +6,8 @@
   <title>Családi naptár rendelés</title>
   <meta name="description" content="Személyre szabott, nyomtatott 12 oldalas A4 naptár a saját fényképeiddel — 60 RON." />
   <!--
-    Post THIS page on Facebook (not script.google.com /exec).
-    Facebook's in-app browser cannot load Google Apps Script (blank white page).
-    Enable GitHub Pages: Settings → Pages → Source = /docs on main
+    Post THIS page on Facebook for OG preview.
+    Humans are redirected to Cloudflare Pages (no Apps Script /u/N/ issues).
   -->
   <meta property="og:type" content="website" />
   <meta property="og:site_name" content="Családi naptár" />
@@ -23,138 +22,22 @@
   <meta name="twitter:title" content="Családi naptár rendelés" />
   <meta name="twitter:description" content="Személyre szabott, nyomtatott 12 oldalas A4 naptár a saját fényképeiddel — 60 RON." />
   <meta name="twitter:image" content="https://blaczko.github.io/calendarGenerator/share/og.jpg" />
+  <meta http-equiv="refresh" content="0;url=https://naptar-web.pages.dev/?page=customer" />
   <style>
-    :root { --ink: #2a241c; --muted: #6b6258; --accent: #b4532a; --card: #fffaf4; --line: #e4d8c8; }
-    * { box-sizing: border-box; }
-    body { margin: 0; font-family: Georgia, "Times New Roman", serif; background: linear-gradient(160deg, #f7f1e8, #efe4d6); color: var(--ink); }
-    .wrap { max-width: 640px; margin: 0 auto; padding: 28px 16px 48px; }
-    .card { background: var(--card); border: 1px solid var(--line); border-radius: 24px; overflow: hidden; box-shadow: 0 18px 50px rgba(80,50,20,.08); }
-    .preview { display: block; width: 100%; height: auto; border-bottom: 1px solid var(--line); }
-    .hero { background: linear-gradient(120deg, #3d2a1f, #8a3c1c 45%, #c47a3a); color: #fff8f1; padding: 28px 24px; }
-    .hero h1 { margin: 0; font-size: 1.8rem; line-height: 1.2; }
-    .hero p { margin: 10px 0 0; opacity: .92; }
-    .body { padding: 22px 24px 28px; }
-    .btn {
-      display: block; background: var(--accent); color: #fff; text-decoration: none;
-      padding: 14px 20px; border-radius: 12px; font-weight: 700; border: 0; font: inherit; cursor: pointer;
-      width: 100%; text-align: center;
-    }
-    .btn-secondary { background: #efe4d6; color: var(--ink); margin-top: 10px; }
-    .hint { margin: 14px 0 0; font-size: 0.9rem; color: var(--muted); line-height: 1.45; }
-    .hint strong { color: var(--ink); }
+    body { margin: 0; font-family: Georgia, "Times New Roman", serif; background: #f7f1e8; color: #2a241c; padding: 28px 16px; }
+    a { color: #b4532a; font-weight: 700; }
   </style>
-</head>
-<body>
-  <div class="wrap">
-    <div class="card">
-      <img class="preview" src="og.jpg" alt="Családi naptár" />
-      <div class="hero">
-        <h1>Családi naptár rendelés</h1>
-        <p>Személyre szabott, nyomtatott 12 oldalas A4 naptár a saját fényképeiddel.</p>
-      </div>
-      <div class="body">
-        <button type="button" class="btn" id="openBtn">Megrendelés indítása</button>
-        <button type="button" class="btn btn-secondary" id="copyBtn" hidden>Link másolása</button>
-        <p class="hint" id="hint" hidden></p>
-      </div>
-    </div>
-  </div>
   <script>
     (function () {
-      // Cloudflare Pages frontend (Apps Script stays as API backend).
-      var OPEN_URL = 'https://naptar-web.pages.dev/?page=customer';
+      // Keep this page for social crawlers (OG tags). Everyone else → Cloudflare.
       var ua = navigator.userAgent || '';
-      var isAndroid = /Android/i.test(ua);
-      var isIOS = /iPhone|iPad|iPod/i.test(ua);
-      // Facebook / Instagram / Line in-app browsers cannot load Apps Script.
-      var isInAppBrowser =
-        /FBAN|FBAV|FB_IAB|FBIOS|FB4A|Instagram|Line\//i.test(ua) ||
-        (/\bwv\b/i.test(ua) && /Facebook/i.test(ua));
-      // Keep this landing for social crawlers (OG preview).
       var isBot = /bot|crawl|spider|slurp|facebookexternalhit|meta-externalagent|whatsapp|telegram/i.test(ua);
-
-      var openBtn = document.getElementById('openBtn');
-      var copyBtn = document.getElementById('copyBtn');
-      var hint = document.getElementById('hint');
-
-      /**
-       * Hand off to the OS so it can open (or ask for) an external browser.
-       * A webpage cannot draw the native chooser itself — only OS URL schemes /
-       * intents can. Android: VIEW intent. iOS: x-safari-https → Safari.
-       */
-      function androidOpenChooser(url) {
-        var bare = url.replace(/^https?:\/\//i, '');
-        return 'intent://' + bare +
-          '#Intent;scheme=https;action=android.intent.action.VIEW;' +
-          'S.browser_fallback_url=' + encodeURIComponent(url) + ';end';
-      }
-
-      function iosOpenSafari(url) {
-        // Opens Safari from in-app WebViews (Facebook, Instagram, etc.).
-        return url.replace(/^https:\/\//i, 'x-safari-https://');
-      }
-
-      function iosOpenChrome(url) {
-        return url.replace(/^https:\/\//i, 'googlechromes://');
-      }
-
-      function copyOrderLink() {
-        function done() {
-          hint.hidden = false;
-          hint.textContent = 'Link kimásolva. Illessze be a külső böngésző címsorába.';
-        }
-        if (navigator.clipboard && navigator.clipboard.writeText) {
-          navigator.clipboard.writeText(OPEN_URL).then(done).catch(function () {
-            window.prompt('Másolja a linket:', OPEN_URL);
-          });
-        } else {
-          window.prompt('Másolja a linket:', OPEN_URL);
-        }
-      }
-
-      // Desktop / normal mobile browser: pick Google account (if needed), then open Apps Script.
-      if (!isInAppBrowser && !isBot) {
-        window.location.replace(OPEN_URL);
-        return;
-      }
-
-      openBtn.textContent = 'Megnyitás böngészőben';
-      copyBtn.hidden = false;
-      copyBtn.onclick = copyOrderLink;
-
-      if (isIOS) {
-        hint.hidden = false;
-        hint.innerHTML =
-          'Megnyitja a Safarit. Ha nem működik: jobb felső <strong>⋯</strong> → ' +
-          '<strong>Megnyitás külső böngészőben</strong>.';
-        openBtn.onclick = function () {
-          // Primary: hand off to Safari via iOS URL scheme (OS-level, not a fake dialog).
-          window.location.href = iosOpenSafari(OPEN_URL);
-          // Fallback note after a moment if still on this page.
-          setTimeout(function () {
-            hint.innerHTML =
-              'Ha Safari nem nyílt meg, próbálja a <strong>⋯ → Megnyitás külső böngészőben</strong> menüt, ' +
-              'vagy a Link másolása gombot. Chrome-hoz: ' +
-              '<a href="' + iosOpenChrome(OPEN_URL) + '">Megnyitás Chrome-ban</a>.';
-          }, 1200);
-        };
-        return;
-      }
-
-      if (isAndroid) {
-        hint.hidden = false;
-        hint.textContent =
-          'A telefon megkérdezheti, melyik böngészővel nyissa meg (Chrome, Firefox stb.).';
-        openBtn.onclick = function () {
-          window.location.href = androidOpenChooser(OPEN_URL);
-        };
-        return;
-      }
-
-      openBtn.onclick = function () {
-        window.location.href = OPEN_URL;
-      };
+      if (isBot) return;
+      location.replace('https://naptar-web.pages.dev/?page=customer');
     })();
   </script>
+</head>
+<body>
+  <p>Átirányítás a naptár oldalra… <a href="https://naptar-web.pages.dev/?page=customer">Kattintson ide</a>.</p>
 </body>
 </html>
