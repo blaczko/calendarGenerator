@@ -11,7 +11,7 @@ public static class WhatsAppService
 {
     /// <summary>Public web-app URL used for customer review links in WhatsApp messages.</summary>
     public const string ReviewWebAppBaseUrl =
-        "https://script.google.com/macros/s/AKfycbyYmQGgwFshrVNfoZ4kX0KY8A4VJPndvfwmS9qFssUMi9BpCfsSf4zMNA2YFzms_bib/exec";
+        "https://script.google.com/macros/s/AKfycbwx0WrFHBjckGTiAsfqPCZbgBfCyPQeT64Xv1cuoC7Tz-oc0RlEn-h6I6j0-hnrOSwa/exec";
 
     /// <summary>
     /// Short GitHub Pages landing that lets the customer pick a Google account slot
@@ -94,12 +94,23 @@ public static class WhatsAppService
             System.Text.RegularExpressions.RegexOptions.IgnoreCase);
     }
 
-    public static string BuildDefaultMessage(OrderRecord order)
+    public enum MessageKind
     {
-        var name = string.IsNullOrWhiteSpace(order.FullName) ? "Ügyfél" : order.FullName.Trim();
+        Welcome,
+        Review
+    }
+
+    public static string BuildDefaultMessage(OrderRecord order) => BuildWelcomeMessage(order);
+
+    public static string BuildWelcomeMessage(OrderRecord order)
+    {
+        var name = ClientName(order);
         var size = string.Equals(order.PaperSize, "A3", StringComparison.OrdinalIgnoreCase) ? "A3"
-            : string.Equals(order.PaperSize, "A5", StringComparison.OrdinalIgnoreCase) ? "A5"
+            : string.Equals(order.PaperSize, "A5", StringComparison.OrdinalIgnoreCase) ? "A5 asztali"
             : "A4";
+        var finish = string.Equals(order.PrintFinish, "matt", StringComparison.OrdinalIgnoreCase)
+            ? "Matt"
+            : "Fényes";
         var orientation = string.Equals(order.CalendarFormatPref, "landscape", StringComparison.OrdinalIgnoreCase)
             ? "Fekvő"
             : "Álló";
@@ -111,15 +122,34 @@ public static class WhatsAppService
             $"Kedves {name},\n\n" +
             "Köszönjük szépen a rendelését.\n" +
             $"Termék neve: Naptár {size}\n" +
+            $"Felület: {finish}\n" +
             $"Tájolás: {orientation}\n" +
             $"Feltöltött képek száma: {photoCount}\n" +
             $"Családi események száma: {eventCount}\n\n" +
             "A rendelés kiegészítéséhez kérem használja a következő linket:\n" +
             $"{reviewUrl}\n" +
-            "A linken először válassza ki a Google-fiókját, majd megnyílik a rendelés.\n" +
             "Itt feltölthet / változtathat a felhasználandó képeken valamint családi eseményeken.\n\n" +
             "Bármi kérdése van, forduljon hozzánk bizalommal.\n\n" +
             "Üdvözlettel,\n" +
             "Zátai Pixel";
     }
+
+    public static string BuildReviewMessage(OrderRecord order)
+    {
+        var name = ClientName(order);
+        var reviewUrl = BuildReviewUrl(order.OrderId);
+        return
+            $"Kedves {name},\n\n" +
+            "Elkészült a rendelt naptár látványterve. Megnézheti az alábbi link megnyitásával:\n" +
+            $"{reviewUrl}\n\n" +
+            "Amennyiben bármi módosítást szeretne, kérem írjon nyugodtan.\n\n" +
+            "Köszönettel,\n" +
+            "Zátai Pixel";
+    }
+
+    public static string BuildMessage(OrderRecord order, MessageKind kind) =>
+        kind == MessageKind.Review ? BuildReviewMessage(order) : BuildWelcomeMessage(order);
+
+    private static string ClientName(OrderRecord order) =>
+        string.IsNullOrWhiteSpace(order.FullName) ? "Ügyfél" : order.FullName.Trim();
 }

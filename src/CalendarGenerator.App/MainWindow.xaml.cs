@@ -22,7 +22,7 @@ public partial class MainWindow : Window
     private void OnLoaded(object sender, RoutedEventArgs e)
     {
         EnsurePreviewPages();
-        SyncOrientationRadios();
+        SyncPaperRadios();
         Vm.PhotosChanged += (_, _) =>
         {
             SyncCropEditor();
@@ -33,8 +33,15 @@ public partial class MainWindow : Window
             if (args.PropertyName is nameof(MainViewModel.CurrentPage)
                 or nameof(MainViewModel.Project)
                 or nameof(MainViewModel.SelectedTemplateId)
-                or nameof(MainViewModel.SelectedOrientation))
+                or nameof(MainViewModel.SelectedOrientation)
+                or nameof(MainViewModel.SelectedPaperKind))
             {
+                if (args.PropertyName is nameof(MainViewModel.SelectedOrientation)
+                    or nameof(MainViewModel.SelectedPaperKind)
+                    or nameof(MainViewModel.Project))
+                {
+                    SyncPaperRadios();
+                }
                 SyncCropEditor();
                 SyncLivePreview();
             }
@@ -138,6 +145,24 @@ public partial class MainWindow : Window
         await Vm.ImportPhotosAsync(files);
     }
 
+    private void A4_Checked(object sender, RoutedEventArgs e)
+    {
+        if (DataContext is MainViewModel vm)
+            vm.SelectedPaperKind = PaperSizeKind.A4;
+    }
+
+    private void A3_Checked(object sender, RoutedEventArgs e)
+    {
+        if (DataContext is MainViewModel vm)
+            vm.SelectedPaperKind = PaperSizeKind.A3;
+    }
+
+    private void A5_Checked(object sender, RoutedEventArgs e)
+    {
+        if (DataContext is MainViewModel vm)
+            vm.SelectedPaperKind = PaperSizeKind.A5;
+    }
+
     private void Portrait_Checked(object sender, RoutedEventArgs e)
     {
         if (DataContext is MainViewModel vm)
@@ -150,8 +175,12 @@ public partial class MainWindow : Window
             vm.SelectedOrientation = PageOrientation.Landscape;
     }
 
-    private void SyncOrientationRadios()
+    private void SyncPaperRadios()
     {
+        A4Radio.IsChecked = Vm.SelectedPaperKind == PaperSizeKind.A4;
+        A3Radio.IsChecked = Vm.SelectedPaperKind == PaperSizeKind.A3;
+        A5Radio.IsChecked = Vm.SelectedPaperKind == PaperSizeKind.A5;
+        PortraitRadio.IsChecked = Vm.SelectedOrientation == PageOrientation.Portrait;
         LandscapeRadio.IsChecked = Vm.SelectedOrientation == PageOrientation.Landscape;
     }
 }

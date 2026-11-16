@@ -1,5 +1,7 @@
 using System.IO;
 using System.Security.Cryptography;
+using System.Text.Json;
+using CalendarGenerator.Core.Orders;
 using CalendarGenerator.Core.Settings;
 using Google.Apis.Auth.OAuth2;
 using Google.Apis.Drive.v3;
@@ -450,6 +452,9 @@ public sealed class GoogleDriveOrderSyncService
                 continue;
             }
 
+            // Keep desktop-only WhatsApp tracking when Drive JSON overwrites local metadata.
+            var preservedWhatsApp = forceRefresh ? TryReadLocalWhatsAppFlags(target) : null;
+
             progress?.Report(forceRefresh
                 ? $"Megrendelés JSON frissítése: {Path.GetFileName(target)}"
                 : $"Új fájl: {Path.GetFileName(target)}");
@@ -457,6 +462,9 @@ public sealed class GoogleDriveOrderSyncService
             {
                 await service.Files.Get(child.Id).DownloadAsync(stream, ct);
             }
+
+            if (preservedWhatsApp is not null)
+                TryMergeLocalWhatsAppFlags(target, preservedWhatsApp);
 
             // Preserve Drive modified time locally for faster next-pass checks.
             if (child.ModifiedTimeDateTimeOffset is { } modified)
@@ -469,6 +477,72 @@ public sealed class GoogleDriveOrderSyncService
         }
 
         return (downloaded, skipped);
+    }
+
+    private sealed class WhatsAppFlagsSnapshot
+    {
+        public bool WhatsAppVerified { get; init; }
+        public string WhatsAppVerifiedPhone { get; init; } = string.Empty;
+        public bool WhatsAppWelcomeSent { get; init; }
+        public bool WhatsAppReviewSent { get; init; }
+    }
+
+    private static readonly JsonSerializerOptions OrderJsonOptions = new()
+    {
+        PropertyNameCaseInsensitive = true,
+        WriteIndented = true,
+        PropertyNamingPolicy = JsonNamingPolicy.CamelCase
+    };
+
+    private static WhatsAppFlagsSnapshot? TryReadLocalWhatsAppFlags(string path)
+    {
+        if (!File.Exists(path))
+            return null;
+        try
+        {
+            var order = JsonSerializer.Deserialize<OrderRecord>(File.ReadAllText(path), OrderJsonOptions);
+            if (order is null)
+                return null;
+            if (!order.WhatsAppVerified && !order.WhatsAppWelcomeSent && !order.WhatsAppReviewSent
+                && string.IsNullOrWhiteSpace(order.WhatsAppVerifiedPhone))
+                return null;
+            return new WhatsAppFlagsSnapshot
+            {
+                WhatsAppVerified = order.WhatsAppVerified,
+                WhatsAppVerifiedPhone = order.WhatsAppVerifiedPhone ?? string.Empty,
+                WhatsAppWelcomeSent = order.WhatsAppWelcomeSent,
+                WhatsAppReviewSent = order.WhatsAppReviewSent
+            };
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    private static void TryMergeLocalWhatsAppFlags(string path, WhatsAppFlagsSnapshot local)
+    {
+        try
+        {
+            var order = JsonSerializer.Deserialize<OrderRecord>(File.ReadAllText(path), OrderJsonOptions);
+            if (order is null)
+                return;
+
+            // Local desktop flags win — Drive/GAS JSON does not track WhatsApp yet.
+            order.WhatsAppVerified = local.WhatsAppVerified || order.WhatsAppVerified;
+            order.WhatsAppWelcomeSent = local.WhatsAppWelcomeSent || order.WhatsAppWelcomeSent;
+            order.WhatsAppReviewSent = local.WhatsAppReviewSent || order.WhatsAppReviewSent;
+            if (!string.IsNullOrWhiteSpace(local.WhatsAppVerifiedPhone))
+                order.WhatsAppVerifiedPhone = local.WhatsAppVerifiedPhone;
+            else if (string.IsNullOrWhiteSpace(order.WhatsAppVerifiedPhone))
+                order.WhatsAppVerifiedPhone = string.Empty;
+
+            File.WriteAllText(path, JsonSerializer.Serialize(order, OrderJsonOptions));
+        }
+        catch
+        {
+            // best-effort; sync still succeeded with Drive content
+        }
     }
 
     /// <summary>

@@ -18,6 +18,12 @@ public sealed class OrderProjectLoader
             ? order.OrderId
             : $"{order.OrderId}_{order.FullName}";
         project.Year = order.CalendarYear > 2000 ? order.CalendarYear : project.Year;
+        project.Paper.Kind = order.PaperSize?.Trim().ToUpperInvariant() switch
+        {
+            "A3" => PaperSizeKind.A3,
+            "A5" => PaperSizeKind.A5,
+            _ => PaperSizeKind.A4
+        };
         project.Paper.Orientation = string.Equals(order.CalendarFormatPref, "landscape", StringComparison.OrdinalIgnoreCase)
             ? PageOrientation.Landscape
             : PageOrientation.Portrait;

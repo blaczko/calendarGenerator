@@ -22,7 +22,9 @@
     'deletePhotoByOrderId',
     'adminLogin',
     'adminListOrders',
-    'adminSetStatus'
+    'adminSetStatus',
+    'getPreviewImageByOrderId',
+    'getPreviewImageByToken'
   ];
 
   function callAction(action, args) {

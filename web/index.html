@@ -231,6 +231,116 @@
         font-size: 0.85rem;
         color: var(--muted);
       }
+      .size-picker {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 14px;
+        margin: 8px 0 16px;
+      }
+      @media (min-width: 700px) {
+        .size-picker { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+      }
+      .size-card {
+        display: flex;
+        flex-direction: column;
+        align-items: stretch;
+        gap: 0;
+        margin: 0;
+        padding: 0;
+        border: 2px solid var(--line);
+        border-radius: 16px;
+        background: #fff;
+        color: inherit;
+        font: inherit;
+        text-align: left;
+        cursor: pointer;
+        overflow: hidden;
+        transition: border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
+      }
+      .size-card:hover {
+        border-color: #c9b29a;
+        transform: translateY(-1px);
+      }
+      .size-card.is-selected {
+        border-color: var(--accent);
+        box-shadow: 0 0 0 3px rgba(180, 83, 42, 0.18);
+      }
+      .size-card:disabled {
+        cursor: default;
+        opacity: 0.92;
+        transform: none;
+      }
+      .size-card:disabled:hover {
+        border-color: var(--line);
+        transform: none;
+      }
+      .size-card.is-selected:disabled {
+        border-color: var(--accent);
+      }
+      .size-card-media {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 168px;
+        padding: 10px;
+        background: linear-gradient(180deg, #f3ebe1, #efe4d6);
+      }
+      .size-card img {
+        display: block;
+        width: 100%;
+        height: auto;
+        max-height: 210px;
+        object-fit: contain;
+        background: transparent;
+      }
+      .size-card-body {
+        padding: 10px 12px 12px;
+        border-top: 1px solid var(--line);
+        background: #fffaf4;
+      }
+      .size-card-title {
+        display: block;
+        font-weight: 700;
+        font-size: 1.05rem;
+        line-height: 1.2;
+      }
+      .size-card-note {
+        display: block;
+        margin-top: 4px;
+        font-size: 0.82rem;
+        color: var(--muted);
+        line-height: 1.35;
+      }
+      .size-promo-large {
+        margin: 0 0 16px;
+        border: 1px solid var(--line);
+        border-radius: 16px;
+        overflow: hidden;
+        background: #fff;
+      }
+      .size-promo-large-media {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 14px;
+        background: linear-gradient(180deg, #f6f0e8, #efe4d6);
+      }
+      .size-promo-large img {
+        display: block;
+        width: 100%;
+        max-width: 560px;
+        height: auto;
+        max-height: 420px;
+        object-fit: contain;
+      }
+      .size-promo-caption {
+        margin: 0;
+        padding: 10px 14px;
+        font-size: 0.88rem;
+        color: var(--muted);
+        background: #f7f1ea;
+        border-top: 1px solid var(--line);
+      }
       .field-error {
         border-color: #c62828 !important;
         box-shadow: 0 0 0 2px rgba(198, 40, 40, 0.15);
@@ -611,6 +721,100 @@
         'Július','Augusztus','Szeptember','Október','November','December'
       ];
 
+      function escapeHtmlShared(s) {
+        return String(s == null ? '' : s)
+          .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+          .replace(/"/g, '&quot;');
+      }
+      function escapeAttrShared(s) {
+        return escapeHtmlShared(s).replace(/'/g, '&#39;');
+      }
+      var PROMO_ASSET_VER = '20261112b';
+      function promoSrcForPaper(paperSize) {
+        var v = String(paperSize || 'A4').toUpperCase();
+        var file = '/assets/promo-a4.jpg';
+        if (v === 'A3') file = '/assets/promo-a3.jpg';
+        if (v === 'A5') file = '/assets/promo-a5.jpg';
+        return file + '?v=' + PROMO_ASSET_VER;
+      }
+      function paperSizeLabelShared(paperSize) {
+        var v = String(paperSize || 'A4').toUpperCase();
+        if (v === 'A3') return 'A3';
+        if (v === 'A5') return 'A5 asztali';
+        return 'A4';
+      }
+      function promoCaptionForPaper(paperSize) {
+        var v = String(paperSize || 'A4').toUpperCase();
+        if (v === 'A3') return 'A3 fali naptár — nagyobb oldal, több hely a fényképeknek.';
+        if (v === 'A5') return 'A5 asztali naptár — álló asztali formátum, havonta max. 2 fénykép.';
+        return 'A4 fali naptár — a klasszikus méret.';
+      }
+      function paperSizeCardsHtml(selected, opts) {
+        opts = opts || {};
+        var editable = opts.editable !== false;
+        var showLarge = opts.showLarge !== false;
+        var sizes = [
+          { value: 'A4', title: 'A4', note: 'Fali naptár' },
+          { value: 'A3', title: 'A3', note: 'Nagyobb fali' },
+          { value: 'A5', title: 'A5 asztali', note: 'Max. 2 kép / hónap' }
+        ];
+        var html = '<div class="size-picker" role="radiogroup" aria-label="Papírméret">';
+        for (var i = 0; i < sizes.length; i++) {
+          var s = sizes[i];
+          var isSel = (selected || 'A4') === s.value;
+          html +=
+            '<button type="button" class="size-card' + (isSel ? ' is-selected' : '') + '"' +
+            ' data-size="' + s.value + '" role="radio" aria-checked="' + (isSel ? 'true' : 'false') + '"' +
+            (editable ? '' : ' disabled') + '>' +
+            '<span class="size-card-media">' +
+            '<img src="' + promoSrcForPaper(s.value) + '" alt="' + escapeAttrShared(s.title) + ' példa" loading="lazy" />' +
+            '</span>' +
+            '<span class="size-card-body">' +
+            '<span class="size-card-title">' + escapeHtmlShared(s.title) + '</span>' +
+            '<span class="size-card-note">' + escapeHtmlShared(s.note) + '</span>' +
+            '</span></button>';
+        }
+        html += '</div>';
+        if (showLarge) {
+          html +=
+            '<div class="size-promo-large" id="sizePromoLarge">' +
+            '<div class="size-promo-large-media">' +
+            '<img id="sizePromoImg" src="' + promoSrcForPaper(selected) + '" alt="' +
+            escapeAttrShared(paperSizeLabelShared(selected)) + ' előnézet" />' +
+            '</div>' +
+            '<p class="size-promo-caption" id="sizePromoCaption">' +
+            escapeHtmlShared(promoCaptionForPaper(selected)) + '</p></div>';
+        }
+        html += '<input type="hidden" id="paperSize" value="' + escapeAttrShared(selected || 'A4') + '" />';
+        return html;
+      }
+      function bindPaperSizeCards(onSelect) {
+        var cards = document.querySelectorAll('.size-card[data-size]');
+        for (var i = 0; i < cards.length; i++) {
+          cards[i].onclick = (function (btn) {
+            return function () {
+              if (btn.disabled) return;
+              var size = btn.getAttribute('data-size') || 'A4';
+              var hidden = document.getElementById('paperSize');
+              if (hidden) hidden.value = size;
+              for (var ci = 0; ci < cards.length; ci++) {
+                var on = cards[ci].getAttribute('data-size') === size;
+                cards[ci].classList.toggle('is-selected', on);
+                cards[ci].setAttribute('aria-checked', on ? 'true' : 'false');
+              }
+              var promoImg = document.getElementById('sizePromoImg');
+              var promoCap = document.getElementById('sizePromoCaption');
+              if (promoImg) {
+                promoImg.src = promoSrcForPaper(size);
+                promoImg.alt = paperSizeLabelShared(size) + ' előnézet';
+              }
+              if (promoCap) promoCap.textContent = promoCaptionForPaper(size);
+              if (onSelect) onSelect(size);
+            };
+          })(cards[i]);
+        }
+      }
+
       /* -------- Lookup / Review modes (same Customer.html file) -------- */
       if (PAGE === 'lookup' || PAGE === 'review') {
         document.body.classList.add('page-' + PAGE);
@@ -685,6 +889,18 @@
             progressKeep: false,
             pendingPhotos: []
           };
+          function maxPhotosForPaper(paperSize) {
+            return String(paperSize || '').toUpperCase() === 'A5' ? 2 : 6;
+          }
+          function paperSizeLabel(paperSize) {
+            var v = String(paperSize || 'A4').toUpperCase();
+            if (v === 'A3') return 'A3';
+            if (v === 'A5') return 'A5 asztali';
+            return 'A4';
+          }
+          function printFinishLabel(finish) {
+            return String(finish || '').toLowerCase() === 'matt' ? 'Matt' : 'Fényes';
+          }
           function $(id) { return document.getElementById(id); }
           function escapeHtml(s) {
             return String(s == null ? '' : s)
@@ -739,6 +955,7 @@
             state.editable = !!payload.editable;
             if (payload.editToken) state.editToken = payload.editToken;
             if (payload.order && payload.order.orderId) state.orderId = payload.order.orderId;
+            state.maxPhotos = maxPhotosForPaper(payload.order && payload.order.paperSize);
             renderReview();
           }
           function loadReview() {
@@ -892,7 +1109,7 @@
               });
               if (res && res.order) {
                 state.order = res.order;
-                state.editable = res.order.status === 'NEW';
+                state.editable = res.order.status === 'NEW' || res.order.status === 'LEAD';
               }
               showOk('Mentve.');
               renderReview();
@@ -934,6 +1151,7 @@
               email: $('email').value.trim(),
               comments: $('comments').value.trim(),
               paperSize: $('paperSize') ? $('paperSize').value : 'A4',
+              printFinish: $('printFinish') ? $('printFinish').value : 'fenyes',
               calendarFormatPref: $('format').value,
               events: collectEvents()
             }], 'Adatok mentése…');
@@ -1060,7 +1278,7 @@
                   clearPending(pendingIds);
                   if (res && res.order) {
                     state.order = res.order;
-                    state.editable = res.order.status === 'NEW';
+                    state.editable = res.order.status === 'NEW' || res.order.status === 'LEAD';
                   }
                   showProgress({
                     title: 'Feltöltés: ' + monthLabel,
@@ -1105,9 +1323,11 @@
               '<label>Teljes név</label><input id="fullName" value="' + escapeAttr(o.fullName || '') + '"' + (editable ? '' : ' disabled') + ' />' +
               '<label>Telefon</label><input id="phone" value="' + escapeAttr(o.phone || '') + '"' + (editable ? '' : ' disabled') + ' />' +
               '<label>E-mail</label><input id="email" value="' + escapeAttr(o.email || '') + '"' + (editable ? '' : ' disabled') + ' />' +
-              '<label>Papírméret</label><select id="paperSize"' + (editable ? '' : ' disabled') + '>' +
-              '<option value="A4"' + ((o.paperSize || 'A4') === 'A4' ? ' selected' : '') + '>A4</option>' +
-              '<option value="A3"' + (o.paperSize === 'A3' ? ' selected' : '') + '>A3</option>' +
+              '<label>Papírméret</label>' +
+              paperSizeCardsHtml(o.paperSize || 'A4', { editable: editable, showLarge: true }) +
+              '<label>Felület</label><select id="printFinish"' + (editable ? '' : ' disabled') + '>' +
+              '<option value="fenyes"' + ((o.printFinish || 'fenyes') !== 'matt' ? ' selected' : '') + '>Fényes</option>' +
+              '<option value="matt"' + (o.printFinish === 'matt' ? ' selected' : '') + '>Matt</option>' +
               '</select>' +
               '<label>Orientáció</label><select id="format"' + (editable ? '' : ' disabled') + '>' +
               '<option value="portrait"' + (o.calendarFormatPref === 'portrait' ? ' selected' : '') + '>Álló (portrait)</option>' +
@@ -1140,7 +1360,9 @@
               html += '<div class="actions"><button type="button" class="btn btn-primary" id="saveBtn">Adatok mentése</button></div>';
             }
 
-            html += '<h2>Feltöltött fényképek</h2><p class="hint">Havonként legfeljebb ' + state.maxPhotos + ' kép.</p>';
+            state.maxPhotos = maxPhotosForPaper(o.paperSize);
+            html += '<h2>Feltöltött fényképek</h2><p class="hint" id="photoLimitHint">Havonként legfeljebb ' + state.maxPhotos + ' kép' +
+              (String(o.paperSize || '').toUpperCase() === 'A5' ? ' (A5 asztali).' : '.') + '</p>';
             for (var m = 1; m <= 12; m++) {
               var list = photosForMonth(m);
               var pending = pendingForMonth(m);
@@ -1169,14 +1391,16 @@
             }
 
             html += '<h2>Termék előnézet</h2>' +
-              '<p class="hint">A vízjeles, összes oldalt tartalmazó előnézet a desktop export után jelenik meg.</p>';
+              '<p class="hint">Az összes oldalt tartalmazó előnézet a desktop export után jelenik meg.</p>';
             if (o.hasPreview || o.previewUrl) {
-              var base = (window.APP_CONFIG && window.APP_CONFIG.gasExecUrl) || WEB_APP_URL || '';
-              var serveUrl = base + '?page=previewServe&orderId=' + encodeURIComponent(state.orderId || o.orderId || '');
-              if (state.editToken) serveUrl += '&token=' + encodeURIComponent(state.editToken);
+              // Serve via Cloudflare proxy — never iframe Apps Script / Drive (breaks on desktop Chrome).
+              var previewQs = 'orderId=' + encodeURIComponent(state.orderId || o.orderId || '');
+              if (state.editToken) previewQs += '&token=' + encodeURIComponent(state.editToken);
+              var serveUrl = '/api/preview?' + previewQs;
               html +=
                 '<div class="preview-wrap">' +
-                '<iframe title="Naptár előnézet" src="' + escapeAttr(serveUrl) + '"></iframe>' +
+                '<img title="Naptár előnézet" alt="Naptár előnézet" src="' + escapeAttr(serveUrl) + '" ' +
+                'style="display:block;width:100%;height:auto;background:#1a1510" />' +
                 '</div>' +
                 '<p class="hint" style="margin-top:8px"><a href="' + escapeAttr(serveUrl) + '" target="_blank">Előnézet megnyitása új lapon</a></p>';
             } else {
@@ -1184,6 +1408,17 @@
             }
 
             $('view').innerHTML = html;
+            bindPaperSizeCards(function (size) {
+              if (!state.order || !editable) return;
+              state.order.paperSize = size;
+              state.maxPhotos = maxPhotosForPaper(size);
+              for (var rm = 1; rm <= 12; rm++) refreshMonthBlock(rm);
+              var hint = $('photoLimitHint');
+              if (hint) {
+                hint.textContent = 'Havonként legfeljebb ' + state.maxPhotos + ' kép' +
+                  (String(size).toUpperCase() === 'A5' ? ' (A5 asztali).' : '.');
+              }
+            });
             if (editable) {
               var saveBtn = $('saveBtn');
               if (saveBtn) saveBtn.onclick = saveDetails;
@@ -1218,6 +1453,30 @@
 
       var STEPS = ['Személyes adatok', 'Naptár beállítások', 'Havi fényképek', 'Események', 'Összegzés'];
       var CALENDAR_PRICE_RON = 60;
+      function maxPhotosForPaper(paperSize) {
+        return String(paperSize || '').toUpperCase() === 'A5' ? 2 : 6;
+      }
+      function paperSizeLabel(paperSize) {
+        var v = String(paperSize || 'A4').toUpperCase();
+        if (v === 'A3') return 'A3';
+        if (v === 'A5') return 'A5 asztali';
+        return 'A4';
+      }
+      function printFinishLabel(finish) {
+        return String(finish || '').toLowerCase() === 'matt' ? 'Matt' : 'Fényes';
+      }
+      function priceTextForPaper(paperSize) {
+        return String(paperSize || '').toUpperCase() === 'A4'
+          ? (CALENDAR_PRICE_RON + ' RON')
+          : 'Ár egyeztetés alatt';
+      }
+      function priceNoteForPaper(paperSize, finish) {
+        return '12 oldalas nyomtatott naptár · ' + paperSizeLabel(paperSize) +
+          ' · ' + printFinishLabel(finish) + ' · álló vagy fekvő';
+      }
+      function syncMaxPhotosFromDraft() {
+        state.maxPhotos = maxPhotosForPaper(state.draft.paperSize);
+      }
       var state = {
         step: 0,
         busy: false,
@@ -1234,6 +1493,7 @@
           calendarLanguage: 'hu',
           calendarFormatPref: 'portrait',
           paperSize: 'A4',
+          printFinish: 'fenyes',
           comments: '',
           privacyConsent: false,
           events: [],
@@ -1349,30 +1609,41 @@
         });
       }
 
-      /** Start Drive order create in background (does not block the photo UI). */
+      /** Create LEAD in background as soon as name + phone are valid. */
+      function maybeCreateLead() {
+        if (state.editToken || state.orderCreating) return;
+        if (!state.draft.fullName.trim() || !isRomanianPhone(state.draft.phone)) return;
+        state.orderCreateError = null;
+        startOrderCreationAsync();
+      }
+
+      /** Quietly push contact / settings updates after the lead exists. */
+      function syncLeadInBackground(fields) {
+        if (!state.editToken || state.orderCreating) return;
+        google.script.run
+          .withSuccessHandler(function () {})
+          .withFailureHandler(function () {})
+          .updateOrder(state.editToken, fields || {});
+      }
+
+      /** Start Drive order create in background (silent — no UI status). */
       function startOrderCreationAsync() {
         if (state.editToken || state.orderCreating) return;
+        if (!state.draft.fullName.trim() || !isRomanianPhone(state.draft.phone)) return;
         state.orderCreating = true;
         state.orderCreateError = null;
-        setStatus('Megrendelés létrehozása a háttérben… Közben már választhat fényképeket.');
         google.script.run
           .withSuccessHandler(function (res) {
             state.orderCreating = false;
             state.editToken = res.editToken;
             state.orderId = res.orderId;
             state.driveFolderUrl = res.driveFolderUrl;
-            state.draft.photos = (res.order && res.order.photos) || [];
-            setStatus('Megrendelés kész (' + res.orderId + '). Feltöltés folytatódik…');
+            if (res.order && res.order.photos) state.draft.photos = res.order.photos;
             notifyOrderWaiters(null, res.editToken);
-            setTimeout(function () {
-              if (!state.busy) hideProgress();
-            }, 800);
           })
           .withFailureHandler(function (err) {
             state.orderCreating = false;
             state.orderCreateError = err && err.message ? err.message : String(err);
-            setStatus('');
-            showError('Megrendelés létrehozása sikertelen: ' + state.orderCreateError);
             notifyOrderWaiters(state.orderCreateError, null);
           })
           .createOrder({
@@ -1383,8 +1654,10 @@
             calendarLanguage: state.draft.calendarLanguage,
             calendarFormatPref: state.draft.calendarFormatPref,
             paperSize: state.draft.paperSize || 'A4',
+            printFinish: state.draft.printFinish || 'fenyes',
             comments: state.draft.comments,
             privacyConsent: false,
+            status: 'LEAD',
             events: state.draft.events,
             directFromOffice: !!state.directFromOffice
           });
@@ -1427,7 +1700,10 @@
         if (state.step === 0) {
           return !!(state.draft.fullName.trim() && isRomanianPhone(state.draft.phone));
         }
-        if (state.step === 1) return !!(state.draft.calendarYear && state.draft.calendarFormatPref && state.draft.paperSize);
+        if (state.step === 1) {
+          return !!(state.draft.calendarYear && state.draft.calendarFormatPref &&
+            state.draft.paperSize && state.draft.printFinish);
+        }
         if (state.step === 4) return !!state.draft.privacyConsent;
         return true;
       }
@@ -1452,11 +1728,26 @@
           }
           return;
         }
-        // Enter photo step immediately; create order asynchronously in background.
+        // Name + phone → create LEAD in background, continue immediately.
+        if (state.step === 0) {
+          maybeCreateLead();
+          state.step = 1;
+          render();
+          return;
+        }
+        // Persist calendar options onto the lead, then open photo step.
         if (state.step === 1) {
+          maybeCreateLead();
+          if (state.editToken) {
+            syncLeadInBackground({
+              calendarYear: state.draft.calendarYear,
+              calendarFormatPref: state.draft.calendarFormatPref,
+              paperSize: state.draft.paperSize || 'A4',
+              printFinish: state.draft.printFinish || 'fenyes'
+            });
+          }
           state.step = 2;
           render();
-          startOrderCreationAsync();
           return;
         }
         // Persist events as soon as the customer leaves that step (before finalize),
@@ -1501,6 +1792,7 @@
             calendarYear: state.draft.calendarYear,
             calendarFormatPref: state.draft.calendarFormatPref,
             paperSize: state.draft.paperSize || 'A4',
+            printFinish: state.draft.printFinish || 'fenyes',
             comments: state.draft.comments,
             events: events,
             privacyConsent: true
@@ -2034,9 +2326,11 @@
               return '<option value="' + y + '"' + (d.calendarYear === y ? ' selected' : '') + '>' + y + '</option>';
             }).join('') + '</select>' +
             '<label>Nyelv</label><select id="lang"><option value="hu">Magyar</option></select>' +
-            '<label>Papírméret *</label><select id="paperSize">' +
-            '<option value="A4"' + ((d.paperSize || 'A4') === 'A4' ? ' selected' : '') + '>A4</option>' +
-            '<option value="A3"' + (d.paperSize === 'A3' ? ' selected' : '') + '>A3</option>' +
+            '<label>Papírméret *</label>' +
+            paperSizeCardsHtml(d.paperSize || 'A4', { editable: true, showLarge: true }) +
+            '<label>Felület *</label><select id="printFinish">' +
+            '<option value="fenyes"' + ((d.printFinish || 'fenyes') !== 'matt' ? ' selected' : '') + '>Fényes</option>' +
+            '<option value="matt"' + (d.printFinish === 'matt' ? ' selected' : '') + '>Matt</option>' +
             '</select>' +
             '<label>Orientáció *</label><select id="format">' +
             '<option value="portrait"' + (d.calendarFormatPref === 'portrait' ? ' selected' : '') + '>Álló (portrait)</option>' +
@@ -2044,10 +2338,11 @@
             '</select>' +
             '<div class="price-box" aria-live="polite">' +
             '<p class="price-label">Ár a jelenlegi beállításokkal</p>' +
-            '<p class="price-value">' + CALENDAR_PRICE_RON + ' RON</p>' +
-            '<p class="price-note">12 oldalas nyomtatott naptár · ' + (d.paperSize === 'A3' ? 'A3' : 'A4') + ' · álló vagy fekvő</p>' +
+            '<p class="price-value" id="priceValue">' + priceTextForPaper(d.paperSize) + '</p>' +
+            '<p class="price-note" id="priceNote">' + priceNoteForPaper(d.paperSize, d.printFinish) + '</p>' +
             '</div>';
         } else if (state.step === 2) {
+          syncMaxPhotosFromDraft();
           html = state.isMobile
             ? '<p class="hint">Havonként 1–' + state.maxPhotos + ' fénykép. Koppints a kamerára vagy a galériára.</p>'
             : '<p class="hint">Havonként 1–' + state.maxPhotos + ' fénykép (JPG/PNG/WebP). Nem kötelező minden hónap.</p>';
@@ -2088,14 +2383,15 @@
             '<div><strong>Név:</strong> ' + escapeHtml(d.fullName) + '</div>' +
             '<div><strong>Telefon:</strong> ' + escapeHtml(d.phone) + '</div>' +
             '<div><strong>Év:</strong> ' + escapeHtml(String(d.calendarYear)) + '</div>' +
-            '<div><strong>Papírméret:</strong> ' + escapeHtml(d.paperSize === 'A3' ? 'A3' : 'A4') + '</div>' +
+            '<div><strong>Papírméret:</strong> ' + escapeHtml(paperSizeLabel(d.paperSize)) + '</div>' +
+            '<div><strong>Felület:</strong> ' + escapeHtml(printFinishLabel(d.printFinish)) + '</div>' +
             '<div><strong>Orientáció:</strong> ' + (d.calendarFormatPref === 'landscape' ? 'Fekvő (landscape)' : 'Álló (portrait)') + '</div>' +
             '<div><strong>Fényképek:</strong> ' + (d.photos || []).length + '</div>' +
             '<div class="thumbs" style="margin-top:10px">' +
             (d.photos || []).map(function (ph) { return thumbHtml(ph); }).join('') +
             '</div>' +
             '<div><strong>Események:</strong> ' + (d.events || []).length + '</div>' +
-            '<div><strong>Ár:</strong> ' + CALENDAR_PRICE_RON + ' RON</div>' +
+            '<div><strong>Ár:</strong> ' + escapeHtml(priceTextForPaper(d.paperSize)) + '</div>' +
             (state.directFromOffice ? '<div><strong>Forrás:</strong> Irodai megrendelés</div>' : '') +
             '</div>' +
             '<label class="consent" for="consent">' +
@@ -2125,20 +2421,44 @@
           };
         }
         bind('fullName', 'fullName');
+        var fullNameEl = $('fullName');
+        if (fullNameEl) {
+          fullNameEl.oninput = fullNameEl.onchange = function () {
+            d.fullName = fullNameEl.value;
+            renderNav();
+            maybeCreateLead();
+            if (state.editToken) {
+              syncLeadInBackground({
+                fullName: d.fullName,
+                phone: d.phone,
+                email: d.email,
+                comments: d.comments
+              });
+            }
+          };
+        }
         bind('email', 'email');
         bind('comments', 'comments');
         bind('year', 'calendarYear', true);
-        bind('paperSize', 'paperSize');
+        bind('printFinish', 'printFinish');
         bind('format', 'calendarFormatPref');
-        var paperEl = $('paperSize');
-        if (paperEl) {
-          paperEl.onchange = function () {
-            d.paperSize = paperEl.value;
-            var note = document.querySelector('.price-note');
-            if (note) {
-              note.textContent = '12 oldalas nyomtatott naptár · ' +
-                (d.paperSize === 'A3' ? 'A3' : 'A4') + ' · álló vagy fekvő';
-            }
+        function refreshPriceUi() {
+          syncMaxPhotosFromDraft();
+          var valueEl = $('priceValue');
+          var noteEl = $('priceNote');
+          if (valueEl) valueEl.textContent = priceTextForPaper(d.paperSize);
+          if (noteEl) noteEl.textContent = priceNoteForPaper(d.paperSize, d.printFinish);
+        }
+        bindPaperSizeCards(function (size) {
+          d.paperSize = size;
+          refreshPriceUi();
+          renderNav();
+        });
+        var finishEl = $('printFinish');
+        if (finishEl) {
+          finishEl.onchange = function () {
+            d.printFinish = finishEl.value;
+            refreshPriceUi();
             renderNav();
           };
         }
@@ -2157,6 +2477,15 @@
                 : 'Csak román szám: +40… vagy 07… / 02… / 03…';
             }
             renderNav();
+            maybeCreateLead();
+            if (ok && state.editToken) {
+              syncLeadInBackground({
+                fullName: d.fullName,
+                phone: d.phone,
+                email: d.email,
+                comments: d.comments
+              });
+            }
           }
           phoneEl.oninput = phoneEl.onchange = refreshPhoneValidity;
           refreshPhoneValidity();

@@ -7,6 +7,7 @@
         <converters:BoolToVisibilityConverter x:Key="BoolToVis" />
         <converters:InvertBoolConverter x:Key="InvertBool" />
         <converters:HexToBrushConverter x:Key="HexToBrush" />
+        <converters:BoolToHuYesNoConverter x:Key="BoolToHuYesNo" />
 
         <SolidColorBrush x:Key="AppBg" Color="#F4F0E8" />
         <SolidColorBrush x:Key="SidebarBg" Color="#2F3A33" />

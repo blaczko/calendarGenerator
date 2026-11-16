@@ -6,7 +6,7 @@
  * doPost JSON: { "action": "createOrder", "args": [ ... ] }
  * doGet:
  *   ?api=ping              – health check
- *   ?page=previewServe     – watermarked preview strip (HTML img)
+ *   ?page=previewServe     – preview strip (HTML img)
  *   ?page=shareImage       – optional OG image blob
  *   anything else          – redirect to Cloudflare frontend
  */
@@ -15,8 +15,11 @@ var MONTH_FOLDERS = [
   '01_Januar', '02_Februar', '03_Marcius', '04_Aprilis', '05_Majus', '06_Junius',
   '07_Julius', '08_Augusztus', '09_Szeptember', '10_Oktober', '11_November', '12_December'
 ];
-var MAX_PHOTOS_PER_MONTH = 6;
+var MAX_PHOTOS_PER_MONTH_DEFAULT = 6;
+var MAX_PHOTOS_PER_MONTH_A5 = 2;
 var PREVIEW_FILE_NAME = 'preview_strip.jpg';
+/** @deprecated use maxPhotosForPaper_ */
+var MAX_PHOTOS_PER_MONTH = MAX_PHOTOS_PER_MONTH_DEFAULT;
 /** Public Cloudflare Pages origin (UI). Old /exec HTML routes redirect here. */
 var FRONTEND_ORIGIN = 'https://naptar-web.pages.dev';
 /** GitHub Pages share landing (Facebook OG / in-app browser handoff). */
@@ -126,6 +129,10 @@ function dispatchExternalApi_(action, args) {
       return adminListOrders(args[0], args[1]);
     case 'adminSetStatus':
       return adminSetStatus(args[0], args[1], args[2]);
+    case 'getPreviewImageByOrderId':
+      return getPreviewImageByOrderId(args[0]);
+    case 'getPreviewImageByToken':
+      return getPreviewImageByToken(args[0]);
     default:
       throw new Error('Ismeretlen művelet: ' + action);
   }
@@ -263,14 +270,29 @@ function escapeHtml_(s) {
 function getPublicConfig() {
   return {
     supportedYears: [2026, 2027, 2028, 2029],
-    maxPhotosPerMonth: MAX_PHOTOS_PER_MONTH,
+    maxPhotosPerMonth: MAX_PHOTOS_PER_MONTH_DEFAULT,
+    maxPhotosByPaperSize: {
+      A4: MAX_PHOTOS_PER_MONTH_DEFAULT,
+      A3: MAX_PHOTOS_PER_MONTH_DEFAULT,
+      A5: MAX_PHOTOS_PER_MONTH_A5
+    },
+    pricesRon: {
+      A4: 60,
+      A3: null,
+      A5: null
+    },
     calendarFormats: [
       { value: 'portrait', labelHu: 'Álló (portrait)' },
       { value: 'landscape', labelHu: 'Fekvő (landscape)' }
     ],
     paperSizes: [
       { value: 'A4', labelHu: 'A4' },
-      { value: 'A3', labelHu: 'A3' }
+      { value: 'A3', labelHu: 'A3' },
+      { value: 'A5', labelHu: 'A5 asztali' }
+    ],
+    printFinishes: [
+      { value: 'fenyes', labelHu: 'Fényes' },
+      { value: 'matt', labelHu: 'Matt' }
     ],
     months: [
       'Január', 'Február', 'Március', 'Április', 'Május', 'Június',
@@ -280,18 +302,19 @@ function getPublicConfig() {
 }
 
 /**
- * Create order (called when leaving step 1 or on first photo upload).
- * privacyConsent may be false for draft; finalizeOrder requires true.
+ * Create order early as a LEAD when name + phone are known (background save).
+ * privacyConsent may be false for draft; finalizeOrder requires true and promotes LEAD → NEW.
  */
 function createOrder(payload) {
-  if (!payload || !payload.fullName || !payload.phone || !payload.calendarYear) {
-    throw new Error('Hiányzó kötelező mezők (név, telefon, év).');
+  if (!payload || !payload.fullName || !payload.phone) {
+    throw new Error('Hiányzó kötelező mezők (név, telefon).');
   }
   if (!isRomanianPhone_(payload.phone)) {
     throw new Error('Csak román telefonszám fogadható el (pl. +40 712 345 678 vagy 0712 345 678).');
   }
 
-  var year = String(payload.calendarYear);
+  var calendarYear = Number(payload.calendarYear) || (new Date().getFullYear() + 1);
+  var year = String(calendarYear);
   var root = getOrCreateRootFolder_();
   var yearFolder = getOrCreateChild_(root, year);
   var orderId = nextOrderId_(year);
@@ -306,19 +329,21 @@ function createOrder(payload) {
   var editToken = Utilities.getUuid().replace(/-/g, '') + Utilities.getUuid().replace(/-/g, '');
   var tokenHash = hashToken_(editToken);
   var now = new Date().toISOString();
+  var status = String(payload.status || 'LEAD').toUpperCase() === 'NEW' ? 'NEW' : 'LEAD';
   var record = {
     orderId: orderId,
     fullName: payload.fullName,
     phone: payload.phone,
     email: payload.email || '',
-    calendarYear: Number(payload.calendarYear),
+    calendarYear: calendarYear,
     calendarLanguage: payload.calendarLanguage || 'hu',
     calendarFormatPref: payload.calendarFormatPref || 'portrait',
     paperSize: normalizePaperSize_(payload.paperSize),
+    printFinish: normalizePrintFinish_(payload.printFinish),
     comments: payload.comments || '',
-    events: sanitizeEvents_(payload.events || [], Number(payload.calendarYear)),
+    events: sanitizeEvents_(payload.events || [], calendarYear),
     photos: [],
-    status: 'NEW',
+    status: status,
     privacyConsent: !!payload.privacyConsent,
     directFromOffice: !!payload.directFromOffice,
     createdAt: now,
@@ -392,12 +417,21 @@ function updateOrderResolved_(ctx, payload) {
   if (payload.calendarYear != null) record.calendarYear = Number(payload.calendarYear);
   if (payload.calendarFormatPref != null) record.calendarFormatPref = payload.calendarFormatPref;
   if (payload.paperSize != null) record.paperSize = normalizePaperSize_(payload.paperSize);
+  if (payload.printFinish != null) record.printFinish = normalizePrintFinish_(payload.printFinish);
   if (payload.calendarLanguage != null) record.calendarLanguage = payload.calendarLanguage;
   if (payload.comments != null) record.comments = payload.comments;
   if (payload.events) {
     record.events = sanitizeEvents_(payload.events, record.calendarYear);
   }
-  if (payload.privacyConsent === true) record.privacyConsent = true;
+  if (payload.privacyConsent === true) {
+    record.privacyConsent = true;
+    // Completed checkout: promote lead to a real NEW order.
+    if (record.status === 'LEAD') record.status = 'NEW';
+  }
+  if (payload.status != null) {
+    var nextStatus = String(payload.status || '').toUpperCase();
+    if (nextStatus === 'LEAD' || nextStatus === 'NEW') record.status = nextStatus;
+  }
   record.updatedAt = new Date().toISOString();
   writeRecord_(ctx.metaFolder, record);
   updateSheetRow_(record);
@@ -409,6 +443,7 @@ function finalizeOrder(editToken, payload) {
     throw new Error('Adatkezelési hozzájárulás kötelező a véglegesítéshez.');
   }
   payload.privacyConsent = true;
+  payload.status = 'NEW';
   return updateOrder(editToken, payload);
 }
 
@@ -460,9 +495,11 @@ function uploadPhotosBatchUnlocked_(ctx, month, filePayloads) {
   for (i = 0; i < (ctx.record.photos || []).length; i++) {
     if (ctx.record.photos[i].month === month) inMonth++;
   }
-  var remaining = MAX_PHOTOS_PER_MONTH - inMonth;
+  var maxPhotos = maxPhotosForPaper_(ctx.record.paperSize);
+  var remaining = maxPhotos - inMonth;
   if (remaining <= 0) {
-    throw new Error('Havonként maximum ' + MAX_PHOTOS_PER_MONTH + ' fénykép.');
+    throw new Error('Havonként maximum ' + maxPhotos + ' fénykép' +
+      (normalizePaperSize_(ctx.record.paperSize) === 'A5' ? ' (A5 asztali).' : '.'));
   }
 
   var toSave = filePayloads.slice(0, remaining);
@@ -700,8 +737,13 @@ function sanitizeEvents_(events, year) {
   return out;
 }
 
+function isCustomerEditableStatus_(status) {
+  var s = String(status || '').toUpperCase();
+  return s === 'NEW' || s === 'LEAD';
+}
+
 function assertEditable_(record) {
-  if (!record || record.status !== 'NEW') {
+  if (!record || !isCustomerEditableStatus_(record.status)) {
     throw new Error(
       'A megrendelés már nem szerkeszthető' +
         (record && record.status ? ' (státusz: ' + record.status + ')' : '') +
@@ -760,7 +802,7 @@ function buildReviewPayload_(ctx, editToken) {
   var order = enrichOrder_(ctx);
   return {
     order: order,
-    editable: order.status === 'NEW',
+    editable: isCustomerEditableStatus_(order.status),
     editToken: editToken || '',
     previewUrl: order.previewUrl || '',
     webAppUrl: (function () {
@@ -775,7 +817,7 @@ function enrichOrder_(ctx) {
   var previewFile = findPreviewFile_(ctx.orderFolder, ctx.metaFolder);
   order.hasPreview = !!previewFile;
   order.previewUrl = previewFile ? findPreviewUrl_(ctx.orderFolder, ctx.metaFolder) : '';
-  order.editable = order.status === 'NEW';
+  order.editable = isCustomerEditableStatus_(order.status);
   return order;
 }
 
@@ -827,8 +869,29 @@ function findNamedFile_(folder, name) {
   return null;
 }
 
+/** Preview bytes for Cloudflare proxy (avoids Drive hotlinks /u/N/ iframe breakage). */
+function getPreviewImageByOrderId(orderId) {
+  return buildPreviewImagePayload_(loadOrderCtxByOrderId_(orderId));
+}
+
+function getPreviewImageByToken(editToken) {
+  return buildPreviewImagePayload_(loadOrderCtx_(editToken));
+}
+
+function buildPreviewImagePayload_(ctx) {
+  var file = findPreviewFile_(ctx.orderFolder, ctx.metaFolder);
+  if (!file) throw new Error('Az előnézet még nem készült el ehhez a rendeléshez.');
+  var blob = file.getBlob();
+  var mime = blob.getContentType() || 'image/jpeg';
+  return {
+    mimeType: mime,
+    base64: Utilities.base64Encode(blob.getBytes()),
+    filename: file.getName()
+  };
+}
+
 /**
- * Serves the watermarked preview strip for the review page iframe
+ * Serves the preview strip for the review page
  * (?page=previewServe&orderId=... / token=...).
  * Web apps cannot return a raw Blob from doGet — wrap as HtmlOutput.
  */
@@ -929,6 +992,7 @@ function publicOrder_(record) {
     calendarLanguage: record.calendarLanguage,
     calendarFormatPref: record.calendarFormatPref,
     paperSize: normalizePaperSize_(record.paperSize),
+    printFinish: normalizePrintFinish_(record.printFinish),
     comments: record.comments,
     events: record.events || [],
     photos: record.photos || [],
@@ -972,7 +1036,22 @@ function openOrdersSheet_() {
 }
 
 function normalizePaperSize_(value) {
-  return String(value || '').toUpperCase() === 'A3' ? 'A3' : 'A4';
+  var v = String(value || '').toUpperCase();
+  if (v === 'A3') return 'A3';
+  if (v === 'A5') return 'A5';
+  return 'A4';
+}
+
+function normalizePrintFinish_(value) {
+  var v = String(value || '').toLowerCase();
+  if (v === 'matt' || v === 'matte') return 'matt';
+  return 'fenyes';
+}
+
+function maxPhotosForPaper_(paperSize) {
+  return normalizePaperSize_(paperSize) === 'A5'
+    ? MAX_PHOTOS_PER_MONTH_A5
+    : MAX_PHOTOS_PER_MONTH_DEFAULT;
 }
 
 function sheetRowValues_(record) {
@@ -990,40 +1069,52 @@ function sheetRowValues_(record) {
     record.updatedAt || record.createdAt,
     record.directFromOffice ? 'YES' : 'NO',
     normalizePaperSize_(record.paperSize),
-    record.calendarFormatPref || 'portrait'
+    record.calendarFormatPref || 'portrait',
+    normalizePrintFinish_(record.printFinish)
   ];
 }
 
-function appendSheetRow_(record) {
-  var sheet = openOrdersSheet_();
+var SHEET_COLUMN_COUNT_ = 15;
+
+function ensureSheetHeaders_(sheet) {
   if (sheet.getLastRow() === 0) {
     sheet.appendRow([
       'Order ID', 'Submission date', 'Customer name', 'Phone number', 'Email', 'Calendar year',
       'Order status', 'Number of photographs', 'Number of events', 'Google Drive folder URL', 'Last modification date',
-      'Direct from office', 'Paper size', 'Orientation'
+      'Direct from office', 'Paper size', 'Orientation', 'Print finish'
     ]);
-  } else {
-    // Backfill header for older sheets that only had 11/12 columns.
-    var headers = sheet.getRange(1, 1, 1, Math.max(14, sheet.getLastColumn())).getValues()[0];
-    if (!headers[11] || String(headers[11]).indexOf('office') < 0) {
-      sheet.getRange(1, 12).setValue('Direct from office');
-    }
-    if (!headers[12] || String(headers[12]).toLowerCase().indexOf('paper') < 0) {
-      sheet.getRange(1, 13).setValue('Paper size');
-    }
-    if (!headers[13] || String(headers[13]).toLowerCase().indexOf('orient') < 0) {
-      sheet.getRange(1, 14).setValue('Orientation');
-    }
+    return;
   }
+  // Backfill header for older sheets.
+  var headers = sheet.getRange(1, 1, 1, Math.max(SHEET_COLUMN_COUNT_, sheet.getLastColumn())).getValues()[0];
+  if (!headers[11] || String(headers[11]).indexOf('office') < 0) {
+    sheet.getRange(1, 12).setValue('Direct from office');
+  }
+  if (!headers[12] || String(headers[12]).toLowerCase().indexOf('paper') < 0) {
+    sheet.getRange(1, 13).setValue('Paper size');
+  }
+  if (!headers[13] || String(headers[13]).toLowerCase().indexOf('orient') < 0) {
+    sheet.getRange(1, 14).setValue('Orientation');
+  }
+  if (!headers[14] || String(headers[14]).toLowerCase().indexOf('finish') < 0) {
+    sheet.getRange(1, 15).setValue('Print finish');
+  }
+}
+
+function appendSheetRow_(record) {
+  var sheet = openOrdersSheet_();
+  ensureSheetHeaders_(sheet);
   sheet.appendRow(sheetRowValues_(record));
 }
 
 function updateSheetRow_(record) {
   var sheet = openOrdersSheet_();
+  ensureSheetHeaders_(sheet);
   var data = sheet.getDataRange().getValues();
+  var values = sheetRowValues_(record);
   for (var r = 1; r < data.length; r++) {
     if (String(data[r][0]) === String(record.orderId)) {
-      sheet.getRange(r + 1, 1, 1, 14).setValues([sheetRowValues_(record)]);
+      sheet.getRange(r + 1, 1, 1, SHEET_COLUMN_COUNT_).setValues([values]);
       return;
     }
   }

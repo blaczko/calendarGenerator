@@ -5,5 +5,5 @@ window.APP_CONFIG = {
   publicOrigin: 'https://naptar-web.pages.dev',
   // Used only for preview iframe (still served by Apps Script HtmlService).
   gasExecUrl:
-    'https://script.google.com/macros/s/AKfycbyYmQGgwFshrVNfoZ4kX0KY8A4VJPndvfwmS9qFssUMi9BpCfsSf4zMNA2YFzms_bib/exec'
+    'https://script.google.com/macros/s/AKfycbwx0WrFHBjckGTiAsfqPCZbgBfCyPQeT64Xv1cuoC7Tz-oc0RlEn-h6I6j0-hnrOSwa/exec'
 };

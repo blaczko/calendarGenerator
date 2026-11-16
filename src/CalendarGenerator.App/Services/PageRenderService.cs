@@ -31,7 +31,8 @@ public sealed class PageRenderService
         const double assemblyCm = 1.2;
         var assemblyDip = assemblyCm / 2.54 * 96.0;
         var contentHeight = Math.Max(200, pageSize.Height - assemblyDip);
-        var photoAreaHeight = Math.Max(120, contentHeight * 0.40);
+        // Keep in sync with CalendarPageControl photo area ratio (~0.52).
+        var photoAreaHeight = Math.Max(120, contentHeight * 0.52);
         return (Math.Max(1, pageSize.Width - 44), photoAreaHeight);
     }
 

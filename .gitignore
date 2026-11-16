@@ -23,6 +23,7 @@ Desktop.ini
 **/imports/
 *.pdf
 !docs/**/*.pdf
+promo/**
 
 ## Google Apps Script / clasp
 google-apps-script/node_modules/

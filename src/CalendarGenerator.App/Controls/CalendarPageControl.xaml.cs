@@ -64,8 +64,9 @@ public partial class CalendarPageControl : UserControl
         var assemblyDip = assemblyCm / 2.54 * 96.0;
         AssemblyRow.Height = new GridLength(assemblyDip);
         var contentHeight = Math.Max(200, pageSize.Height - assemblyDip);
-        var photoRatio = _theme.CalendarFormat == CalendarFormat.Compact ? 0.44 : 0.40;
-        var photoAreaHeight = Math.Max(120, contentHeight * photoRatio);
+        // Larger photo band; title overlays the bottom so collage can extend under the month name.
+        var photoRatio = _theme.CalendarFormat == CalendarFormat.Compact ? 0.56 : 0.52;
+        var photoAreaHeight = Math.Max(160, contentHeight * photoRatio);
         PhotoSection.Height = photoAreaHeight;
 
         InteractivePhotos.LayoutChanged -= OnInteractiveLayoutChanged;

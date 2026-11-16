@@ -118,6 +118,7 @@ public partial class MainViewModel : ObservableObject
     [ObservableProperty] private PhotoThumbViewModel? _selectedPhoto;
     [ObservableProperty] private string _selectedTemplateId = "soft-beige";
     [ObservableProperty] private PageOrientation _selectedOrientation = PageOrientation.Portrait;
+    [ObservableProperty] private PaperSizeKind _selectedPaperKind = PaperSizeKind.A4;
     [ObservableProperty] private string _newTemplateName = string.Empty;
     [ObservableProperty] private string _newTemplateImagePath = string.Empty;
     [ObservableProperty] private string _orderSearch = string.Empty;
@@ -127,7 +128,7 @@ public partial class MainViewModel : ObservableObject
 
     public ObservableCollection<OrderRecord> FilteredOrders { get; } = new();
     public IReadOnlyList<string> OrderStatuses { get; } =
-        ["NEW", "IN_PROGRESS", "WAITING_FOR_CUSTOMER", "COMPLETED", "CANCELLED"];
+        ["LEAD", "NEW", "IN_PROGRESS", "WAITING_FOR_CUSTOMER", "COMPLETED", "CANCELLED"];
 
     public bool CanDeleteSelectedTemplate =>
         Templates.FirstOrDefault(t => t.Id == SelectedTemplateId)?.IsCustom == true;
@@ -166,6 +167,15 @@ public partial class MainViewModel : ObservableObject
     {
         Project.Paper.Orientation = value;
         Project.Paper.ApplyPreset();
+        _ = RefreshPreviewAsync();
+        ScheduleAutoSave();
+    }
+
+    partial void OnSelectedPaperKindChanged(PaperSizeKind value)
+    {
+        Project.Paper.Kind = value;
+        Project.Paper.ApplyPreset();
+        OnPropertyChanged(nameof(MaxPhotosPerMonth));
         _ = RefreshPreviewAsync();
         ScheduleAutoSave();
     }
@@ -306,6 +316,52 @@ public partial class MainViewModel : ObservableObject
         }
     }
 
+    partial void OnSelectedOrderChanged(OrderRecord? value) =>
+        OpenWhatsAppCommand.NotifyCanExecuteChanged();
+
+    private bool CanOpenWhatsApp() => SelectedOrder is not null;
+
+    [RelayCommand(CanExecute = nameof(CanOpenWhatsApp))]
+    private void OpenWhatsApp()
+    {
+        if (SelectedOrder is null)
+            return;
+
+        var dialog = new WhatsAppMessageWindow(SelectedOrder, PersistWhatsAppFlags)
+        {
+            Owner = Application.Current.MainWindow
+        };
+
+        dialog.ShowDialog();
+        OnPropertyChanged(nameof(SelectedOrder));
+        if (dialog.DidPersist)
+        {
+            StatusMessage = SelectedOrder.WhatsAppWelcomeSent || SelectedOrder.WhatsAppReviewSent
+                ? $"WhatsApp állapot mentve: {SelectedOrder.OrderId}"
+                : $"WhatsApp frissítve: {SelectedOrder.OrderId}";
+        }
+    }
+
+    private void PersistWhatsAppFlags(OrderRecord order)
+    {
+        if (string.IsNullOrWhiteSpace(order.LocalFolderPath))
+            throw new InvalidOperationException("A megrendelés helyi mappája hiányzik — előbb szinkronizáljon Drive-ról.");
+        SyncWhatsAppVerifiedPhone(order);
+        _orderRepo.Save(order);
+    }
+
+    private static void SyncWhatsAppVerifiedPhone(OrderRecord order)
+    {
+        if (!order.WhatsAppVerified)
+        {
+            order.WhatsAppVerifiedPhone = string.Empty;
+            return;
+        }
+
+        if (PhoneNumberHelper.TryNormalizeForWhatsApp(order.Phone, out var digits))
+            order.WhatsAppVerifiedPhone = digits;
+    }
+
     [RelayCommand]
     private void SaveSelectedOrder()
     {
@@ -324,6 +380,7 @@ public partial class MainViewModel : ObservableObject
                 SyncProjectEventsToSelectedOrder(saveToDisk: false);
             }
 
+            SyncWhatsAppVerifiedPhone(SelectedOrder);
             _orderRepo.Save(SelectedOrder);
             StatusMessage = $"Mentve: {SelectedOrder.OrderId}";
         }
@@ -348,6 +405,7 @@ public partial class MainViewModel : ObservableObject
             Project = new CalendarProject();
             _orderLoader.ApplyOrderToProject(Project, SelectedOrder);
             ActiveOrderId = SelectedOrder.OrderId;
+            SelectedPaperKind = Project.Paper.Kind;
             SelectedOrientation = Project.Paper.Orientation;
             SelectedMonth = 1;
             RefreshTemplates();
@@ -394,7 +452,14 @@ public partial class MainViewModel : ObservableObject
             NewEventDay = max;
     }
 
-    public const int MaxPhotosPerMonth = 12;
+    public const int MaxPhotosPerMonthDefault = 12;
+    public const int MaxPhotosPerMonthA5 = 2;
+
+    /// <summary>A5 desk calendars allow 2 photos/month; other sizes keep the desktop editing limit.</summary>
+    public int MaxPhotosPerMonth =>
+        SelectedPaperKind == PaperSizeKind.A5 || Project.Paper.Kind == PaperSizeKind.A5
+            ? MaxPhotosPerMonthA5
+            : MaxPhotosPerMonthDefault;
 
     [RelayCommand]
     private async Task AddPhotosAsync()
@@ -422,10 +487,11 @@ public partial class MainViewModel : ObservableObject
     public async Task ImportPhotosAsync(IEnumerable<string> paths)
     {
         var month = Project.GetMonth(SelectedMonth);
-        var remaining = MaxPhotosPerMonth - month.Photos.Count;
+        var maxPhotos = MaxPhotosPerMonth;
+        var remaining = maxPhotos - month.Photos.Count;
         if (remaining <= 0)
         {
-            StatusMessage = $"Maximum {MaxPhotosPerMonth} fénykép / hónap.";
+            StatusMessage = $"Maximum {maxPhotos} fénykép / hónap.";
             return;
         }
 
@@ -485,8 +551,8 @@ public partial class MainViewModel : ObservableObject
             ScheduleAutoSave();
 
             StatusMessage = skipped > 0
-                ? $"{added} fénykép hozzáadva ({skipped} kihagyva). Összesen: {month.Photos.Count}/{MaxPhotosPerMonth}."
-                : $"{added} fénykép hozzáadva. Összesen: {month.Photos.Count}/{MaxPhotosPerMonth}.";
+                ? $"{added} fénykép hozzáadva ({skipped} kihagyva). Összesen: {month.Photos.Count}/{maxPhotos}."
+                : $"{added} fénykép hozzáadva. Összesen: {month.Photos.Count}/{maxPhotos}.";
         }
         finally
         {
@@ -875,6 +941,7 @@ public partial class MainViewModel : ObservableObject
             }
 
             Project = loaded;
+            SelectedPaperKind = Project.Paper.Kind;
             SelectedOrientation = Project.Paper.Orientation;
             SelectedMonth = 1;
             RefreshTemplates();
@@ -899,7 +966,11 @@ public partial class MainViewModel : ObservableObject
         ActiveOrderId = "—";
         SelectedOrder = null;
         SelectedMonth = 1;
+        SelectedPaperKind = PaperSizeKind.A4;
         SelectedOrientation = PageOrientation.Portrait;
+        Project.Paper.Kind = PaperSizeKind.A4;
+        Project.Paper.Orientation = PageOrientation.Portrait;
+        Project.Paper.ApplyPreset();
         RefreshTemplates();
         SyncThemeEditor();
         RefreshEvents();
@@ -1060,6 +1131,11 @@ public partial class MainViewModel : ObservableObject
                 };
             })
             .ToList();
+
+        SelectedOrder.PaperSize = Project.Paper.SizeLabel;
+        SelectedOrder.CalendarFormatPref = Project.Paper.OrientationLabel;
+        if (string.IsNullOrWhiteSpace(SelectedOrder.PrintFinish))
+            SelectedOrder.PrintFinish = "fenyes";
 
         if (!saveToDisk || string.IsNullOrWhiteSpace(SelectedOrder.LocalFolderPath))
             return;

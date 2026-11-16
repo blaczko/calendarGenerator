@@ -46,8 +46,8 @@ public sealed class PdfExportService
     }
 
     /// <summary>
-    /// Exports a clean PDF and one long watermarked JPEG (all 12 pages stacked).
-    /// Paths: {orderId}.pdf and {orderId}_preview.jpg
+    /// Exports a clean PDF and one long preview JPEG (all 12 pages stacked, no watermark).
+    /// Paths: {orderId}_{A4|A3|A5}_{portrait|landscape}.pdf and …_preview.jpg
     /// </summary>
     public async Task<(string CleanPath, string PreviewStripPath)> ExportOrderPairAsync(
         CalendarProject project,
@@ -57,9 +57,10 @@ public sealed class PdfExportService
         CancellationToken ct = default)
     {
         Directory.CreateDirectory(outputFolder);
-        var safeId = string.IsNullOrWhiteSpace(orderId) ? $"Naptar_{project.Year}" : SanitizeFileName(orderId);
-        var cleanPath = Path.Combine(outputFolder, $"{safeId}.pdf");
-        var stripPath = Path.Combine(outputFolder, $"{safeId}_preview.jpg");
+        project.Paper.ApplyPreset();
+        var baseName = BuildExportBaseName(orderId, project);
+        var cleanPath = Path.Combine(outputFolder, $"{baseName}.pdf");
+        var stripPath = Path.Combine(outputFolder, $"{baseName}_preview.jpg");
 
         var tempDir = Path.Combine(Path.GetTempPath(), "CalendarGenerator", project.Id.ToString("N"), "export-pair");
         Directory.CreateDirectory(tempDir);
@@ -70,8 +71,8 @@ public sealed class PdfExportService
             progress?.Report("PDF (tiszta) összeállítása…");
             await WriteCleanPdfAsync(project, pages, cleanPath, progress, ct);
 
-            progress?.Report("Vízjeles előnézet kép összeállítása…");
-            await Task.Run(() => WriteWatermarkedStrip(pages, stripPath), ct);
+            progress?.Report("Előnézet kép összeállítása…");
+            await Task.Run(() => WritePreviewStrip(pages, stripPath), ct);
 
             progress?.Report("Kész.");
             return (cleanPath, stripPath);
@@ -130,13 +131,11 @@ public sealed class PdfExportService
         }, ct);
     }
 
-    private static void WriteWatermarkedStrip(IReadOnlyList<string> pageImages, string outputPath)
+    private static void WritePreviewStrip(IReadOnlyList<string> pageImages, string outputPath)
     {
         if (pageImages.Count == 0)
-            throw new InvalidOperationException("Nincs renderelt oldal a vízjeles képhez.");
+            throw new InvalidOperationException("Nincs renderelt oldal az előnézet képhez.");
 
-        var logoPath = WatermarkLogoService.EnsureTransparentLogoPng();
-        var logo = LoadBitmap(logoPath);
         var pages = pageImages.Select(LoadBitmap).ToList();
 
         var srcW = pages[0].PixelWidth;
@@ -152,7 +151,6 @@ public sealed class PdfExportService
             {
                 var rect = new Rect(0, i * pageOutH, outW, pageOutH);
                 dc.DrawImage(pages[i], rect);
-                dc.DrawImage(logo, rect);
             }
         }
 
@@ -189,6 +187,15 @@ public sealed class PdfExportService
         {
             // best-effort cleanup
         }
+    }
+
+    public static string BuildExportBaseName(string orderId, CalendarProject project)
+    {
+        project.Paper.ApplyPreset();
+        var safeId = string.IsNullOrWhiteSpace(orderId)
+            ? $"Naptar_{project.Year}"
+            : SanitizeFileName(orderId);
+        return $"{safeId}_{project.Paper.SizeLabel}_{project.Paper.OrientationLabel}";
     }
 
     private static string SanitizeFileName(string name)

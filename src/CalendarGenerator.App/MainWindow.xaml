@@ -177,6 +177,12 @@
                                                         <Run Text=" · " />
                                                         <Run Text="{Binding CalendarYear, Mode=OneWay}" />
                                                     </TextBlock>
+                                                    <TextBlock FontSize="10" Foreground="#2F6B3A" Margin="0,2,0,0">
+                                                        <Run Text="WA üdv: " />
+                                                        <Run Text="{Binding WhatsAppWelcomeSent, Mode=OneWay, Converter={StaticResource BoolToHuYesNo}}" />
+                                                        <Run Text=" · látvány: " />
+                                                        <Run Text="{Binding WhatsAppReviewSent, Mode=OneWay, Converter={StaticResource BoolToHuYesNo}}" />
+                                                    </TextBlock>
                                                 </StackPanel>
                                             </DataTemplate>
                                         </ListBox.ItemTemplate>
@@ -192,12 +198,62 @@
                                     <TextBlock Text="Név" FontWeight="SemiBold" Margin="0,0,0,4" />
                                     <TextBox Text="{Binding SelectedOrder.FullName, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,0,10" />
                                     <TextBlock Text="Telefon" FontWeight="SemiBold" Margin="0,0,0,4" />
-                                    <TextBox Text="{Binding SelectedOrder.Phone, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,0,10" />
+                                    <DockPanel Margin="0,0,0,10">
+                                        <Button DockPanel.Dock="Right"
+                                                Width="40"
+                                                Height="32"
+                                                Margin="8,0,0,0"
+                                                ToolTip="WhatsApp üzenet"
+                                                Cursor="Hand"
+                                                Command="{Binding OpenWhatsAppCommand}"
+                                                Background="#25D366"
+                                                BorderThickness="0"
+                                                Padding="0">
+                                            <Button.Template>
+                                                <ControlTemplate TargetType="Button">
+                                                    <Border x:Name="Bd"
+                                                            Background="{TemplateBinding Background}"
+                                                            CornerRadius="4"
+                                                            Padding="{TemplateBinding Padding}">
+                                                        <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                                    </Border>
+                                                    <ControlTemplate.Triggers>
+                                                        <Trigger Property="IsMouseOver" Value="True">
+                                                            <Setter TargetName="Bd" Property="Opacity" Value="0.9" />
+                                                        </Trigger>
+                                                        <Trigger Property="IsEnabled" Value="False">
+                                                            <Setter TargetName="Bd" Property="Opacity" Value="0.4" />
+                                                        </Trigger>
+                                                    </ControlTemplate.Triggers>
+                                                </ControlTemplate>
+                                            </Button.Template>
+                                            <Viewbox Width="18" Height="18">
+                                                <Path Fill="White"
+                                                      Data="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.435 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z" />
+                                            </Viewbox>
+                                        </Button>
+                                        <TextBox Text="{Binding SelectedOrder.Phone, UpdateSourceTrigger=PropertyChanged}" />
+                                    </DockPanel>
                                     <TextBlock Text="E-mail" FontWeight="SemiBold" Margin="0,0,0,4" />
                                     <TextBox Text="{Binding SelectedOrder.Email, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,0,10" />
                                     <TextBlock Text="Év" FontWeight="SemiBold" Margin="0,0,0,4" />
                                     <TextBox Text="{Binding SelectedOrder.CalendarYear, UpdateSourceTrigger=PropertyChanged}" Width="120" HorizontalAlignment="Left" Margin="0,0,0,10" />
-                                    <TextBlock Text="Formátum" FontWeight="SemiBold" Margin="0,0,0,4" />
+                                    <TextBlock Text="Papírméret" FontWeight="SemiBold" Margin="0,0,0,4" />
+                                    <ComboBox SelectedValue="{Binding SelectedOrder.PaperSize}"
+                                              SelectedValuePath="Tag"
+                                              Margin="0,0,0,10" Width="220" HorizontalAlignment="Left">
+                                        <ComboBoxItem Content="A4" Tag="A4" />
+                                        <ComboBoxItem Content="A3" Tag="A3" />
+                                        <ComboBoxItem Content="A5 asztali" Tag="A5" />
+                                    </ComboBox>
+                                    <TextBlock Text="Felület" FontWeight="SemiBold" Margin="0,0,0,4" />
+                                    <ComboBox SelectedValue="{Binding SelectedOrder.PrintFinish}"
+                                              SelectedValuePath="Tag"
+                                              Margin="0,0,0,10" Width="220" HorizontalAlignment="Left">
+                                        <ComboBoxItem Content="Fényes" Tag="fenyes" />
+                                        <ComboBoxItem Content="Matt" Tag="matt" />
+                                    </ComboBox>
+                                    <TextBlock Text="Orientáció" FontWeight="SemiBold" Margin="0,0,0,4" />
                                     <ComboBox SelectedValue="{Binding SelectedOrder.CalendarFormatPref}"
                                               SelectedValuePath="Tag"
                                               Margin="0,0,0,10" Width="220" HorizontalAlignment="Left">
@@ -208,6 +264,17 @@
                                     <ComboBox ItemsSource="{Binding OrderStatuses}"
                                               SelectedItem="{Binding SelectedOrder.Status}"
                                               Margin="0,0,0,10" Width="220" HorizontalAlignment="Left" />
+                                    <TextBlock Text="WhatsApp" FontWeight="SemiBold" Margin="0,0,0,6" />
+                                    <StackPanel Margin="0,0,0,10">
+                                        <CheckBox Content="Szám ellenőrizve"
+                                                  IsChecked="{Binding SelectedOrder.WhatsAppVerified}"
+                                                  Margin="0,0,0,4" />
+                                        <CheckBox Content="Üdvözlő üzenet elküldve"
+                                                  IsChecked="{Binding SelectedOrder.WhatsAppWelcomeSent}"
+                                                  Margin="0,0,0,4" />
+                                        <CheckBox Content="Látványterv üzenet elküldve"
+                                                  IsChecked="{Binding SelectedOrder.WhatsAppReviewSent}" />
+                                    </StackPanel>
                                     <TextBlock Text="Irodai megrendelés (közvetlen)"
                                                FontWeight="SemiBold"
                                                Foreground="#1E3A5F"
@@ -228,16 +295,34 @@
                                     <Border Background="#F3EEE6" CornerRadius="6" Padding="12" Margin="0,20,0,0">
                                         <StackPanel>
                                             <TextBlock Text="Aktív naptárprojekt" FontWeight="SemiBold" Margin="0,0,0,8" />
+                                            <TextBlock Text="Papírméret" FontWeight="SemiBold" Margin="0,0,0,6" />
+                                            <StackPanel Orientation="Horizontal" Margin="0,0,0,12">
+                                                <RadioButton x:Name="A4Radio"
+                                                             Content="A4"
+                                                             GroupName="PaperSize"
+                                                             IsChecked="True"
+                                                             Margin="0,0,16,0"
+                                                             Checked="A4_Checked" />
+                                                <RadioButton x:Name="A3Radio"
+                                                             Content="A3"
+                                                             GroupName="PaperSize"
+                                                             Margin="0,0,16,0"
+                                                             Checked="A3_Checked" />
+                                                <RadioButton x:Name="A5Radio"
+                                                             Content="A5 asztali"
+                                                             GroupName="PaperSize"
+                                                             Checked="A5_Checked" />
+                                            </StackPanel>
                                             <TextBlock Text="Orientáció" FontWeight="SemiBold" Margin="0,0,0,6" />
                                             <StackPanel Orientation="Horizontal" Margin="0,0,0,12">
                                                 <RadioButton x:Name="PortraitRadio"
-                                                             Content="Álló (A4)"
+                                                             Content="Álló"
                                                              GroupName="Orientation"
                                                              IsChecked="True"
                                                              Margin="0,0,16,0"
                                                              Checked="Portrait_Checked" />
                                                 <RadioButton x:Name="LandscapeRadio"
-                                                             Content="Fekvő (A4)"
+                                                             Content="Fekvő"
                                                              GroupName="Orientation"
                                                              Checked="Landscape_Checked" />
                                             </StackPanel>
@@ -616,13 +701,14 @@
                         Background="{StaticResource CardBg}" CornerRadius="8" Padding="28">
                     <StackPanel MaxWidth="640" HorizontalAlignment="Left">
                         <TextBlock Text="PDF export" FontFamily="Georgia" FontSize="28" />
-                        <TextBlock Text="A kimeneti mappába kerül: tiszta PDF (rendelésszám.pdf) és egy hosszú, vízjeles előnézet kép (rendelésszám_preview.jpg) az összes oldallal. Ha van Drive kapcsolat, az előnézet a megrendelés mappájába is felkerül."
+                        <TextBlock Text="A kimeneti mappába kerül: tiszta PDF (rendelésszám_A4_portrait.pdf) és egy hosszú előnézet kép (…_preview.jpg) az összes oldallal. A fájlnév tartalmazza a papírméretet és az orientációt. Ha van Drive kapcsolat, az előnézet a megrendelés mappájába is felkerül."
                                    Foreground="{StaticResource TextMuted}" Margin="0,6,0,20" TextWrapping="Wrap" />
 
                         <Border Background="#F3EEE6" CornerRadius="6" Padding="16" Margin="0,0,0,20">
                             <StackPanel>
                                 <TextBlock Text="{Binding ActiveOrderId, StringFormat=Rendelés: {0}}" FontWeight="SemiBold" />
                                 <TextBlock Text="{Binding Project.Year, StringFormat=Év: {0}}" Margin="0,4,0,0" />
+                                <TextBlock Text="{Binding SelectedPaperKind, StringFormat=Papírméret: {0}}" Margin="0,4,0,0" />
                                 <TextBlock Text="{Binding SelectedOrientation, StringFormat=Orientáció: {0}}" Margin="0,4,0,0" />
                                 <TextBlock Text="{Binding Project.Events.Count, StringFormat=Események: {0}}" Margin="0,4,0,0" />
                                 <TextBlock Text="Oldalak: 12 · 300 DPI" Margin="0,4,0,0" />
@@ -631,7 +717,7 @@
 
                         <ProgressBar Height="10" Minimum="0" Maximum="100"
                                      Value="{Binding ExportProgress}" Margin="0,0,0,12" />
-                        <Button Content="Export (tiszta PDF + vízjeles előnézet)…"
+                        <Button Content="Export (tiszta PDF + előnézet)…"
                                 Style="{StaticResource PrimaryButton}"
                                 HorizontalAlignment="Left"
                                 Command="{Binding ExportPdfCommand}"

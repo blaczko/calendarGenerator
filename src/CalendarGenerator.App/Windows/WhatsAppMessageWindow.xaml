@@ -1,0 +1,148 @@
+<Window x:Class="CalendarGenerator.App.Windows.WhatsAppMessageWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="WhatsApp üzenetek"
+        Height="720"
+        Width="560"
+        MinHeight="520"
+        MinWidth="460"
+        WindowStartupLocation="CenterOwner"
+        Background="#F7F1E8"
+        ResizeMode="CanResizeWithGrip">
+    <Grid Margin="24">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <ScrollViewer x:Name="ContentScroll"
+                      VerticalScrollBarVisibility="Auto"
+                      HorizontalScrollBarVisibility="Disabled"
+                      CanContentScroll="False">
+            <StackPanel>
+                <StackPanel Orientation="Horizontal" Margin="0,0,0,12">
+                    <Border Width="36" Height="36" CornerRadius="18" Background="#25D366" Margin="0,0,12,0">
+                        <Viewbox Margin="7">
+                            <Path Fill="White"
+                                  Data="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.435 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z" />
+                        </Viewbox>
+                    </Border>
+                    <StackPanel VerticalAlignment="Center">
+                        <TextBlock Text="WhatsApp" FontFamily="Georgia" FontSize="22" />
+                        <TextBlock x:Name="OrderLabel" Foreground="#6B6258" FontSize="12" />
+                    </StackPanel>
+                </StackPanel>
+
+                <TextBlock Text="Telefonszám" FontWeight="SemiBold" Margin="0,0,0,4" />
+                <TextBox x:Name="PhoneBox" Margin="0,0,0,6" />
+                <TextBlock x:Name="NormalizedLabel"
+                           Foreground="#6B6258"
+                           FontSize="12"
+                           Margin="0,0,0,12"
+                           TextWrapping="Wrap" />
+
+                <Border Background="#EAF7EF" CornerRadius="6" Padding="12" Margin="0,0,0,12">
+                    <StackPanel>
+                        <TextBlock Text="1. Ellenőrzés" FontWeight="SemiBold" Margin="0,0,0,6" />
+                        <TextBlock TextWrapping="Wrap" Foreground="#3A4A40" FontSize="12" Margin="0,0,0,10"
+                                   Text="Nyissa meg a beszélgetést WhatsAppban. Ha a szám regisztrálva van, megjelenik a chat; ha nem, a WhatsApp figyelmeztetést mutat." />
+                        <Button Content="Ellenőrzés WhatsApp-on…"
+                                Padding="12,8"
+                                HorizontalAlignment="Left"
+                                Click="Verify_Click"
+                                Background="#25D366"
+                                Foreground="White"
+                                BorderThickness="0"
+                                Cursor="Hand" />
+                        <StackPanel x:Name="ConfirmPanel" Orientation="Horizontal" Margin="0,12,0,0" Visibility="Collapsed">
+                            <Button Content="Igen, van WhatsApp"
+                                    Padding="12,8"
+                                    Margin="0,0,8,0"
+                                    Click="ConfirmYes_Click"
+                                    Cursor="Hand" />
+                            <Button Content="Nincs WhatsApp"
+                                    Padding="12,8"
+                                    Click="ConfirmNo_Click"
+                                    Cursor="Hand" />
+                        </StackPanel>
+                        <TextBlock x:Name="VerifyStatus"
+                                   Margin="0,10,0,0"
+                                   TextWrapping="Wrap"
+                                   FontWeight="SemiBold" />
+                    </StackPanel>
+                </Border>
+
+                <StackPanel x:Name="MessagePanel" IsEnabled="False" Opacity="0.45">
+                    <Border Background="#FFFAF4" BorderBrush="#E4D8C8" BorderThickness="1" CornerRadius="6" Padding="12" Margin="0,0,0,12">
+                        <StackPanel>
+                            <DockPanel Margin="0,0,0,8">
+                                <CheckBox x:Name="WelcomeSentCheck"
+                                          DockPanel.Dock="Right"
+                                          VerticalAlignment="Center"
+                                          Content="Elküldve"
+                                          FontWeight="SemiBold"
+                                          Checked="WelcomeSentCheck_Changed"
+                                          Unchecked="WelcomeSentCheck_Changed" />
+                                <TextBlock Text="2. Üdvözlő üzenet" FontWeight="SemiBold" VerticalAlignment="Center" />
+                            </DockPanel>
+                            <TextBox x:Name="WelcomeMessageText"
+                                     AcceptsReturn="True"
+                                     TextWrapping="Wrap"
+                                     VerticalScrollBarVisibility="Auto"
+                                     MinHeight="120"
+                                     Height="150"
+                                     Margin="0,0,0,8" />
+                            <Button Content="Üdvözlő üzenet küldése…"
+                                    Padding="12,8"
+                                    HorizontalAlignment="Left"
+                                    Click="SendWelcome_Click"
+                                    Background="#25D366"
+                                    Foreground="White"
+                                    BorderThickness="0"
+                                    FontWeight="SemiBold"
+                                    Cursor="Hand" />
+                        </StackPanel>
+                    </Border>
+
+                    <Border Background="#FFFAF4" BorderBrush="#E4D8C8" BorderThickness="1" CornerRadius="6" Padding="12" Margin="0,0,0,8">
+                        <StackPanel>
+                            <DockPanel Margin="0,0,0,8">
+                                <CheckBox x:Name="ReviewSentCheck"
+                                          DockPanel.Dock="Right"
+                                          VerticalAlignment="Center"
+                                          Content="Elküldve"
+                                          FontWeight="SemiBold"
+                                          Checked="ReviewSentCheck_Changed"
+                                          Unchecked="ReviewSentCheck_Changed" />
+                                <TextBlock Text="3. Látványterv üzenet" FontWeight="SemiBold" VerticalAlignment="Center" />
+                            </DockPanel>
+                            <TextBox x:Name="ReviewMessageText"
+                                     AcceptsReturn="True"
+                                     TextWrapping="Wrap"
+                                     VerticalScrollBarVisibility="Auto"
+                                     MinHeight="110"
+                                     Height="130"
+                                     Margin="0,0,0,8" />
+                            <Button Content="Látványterv üzenet küldése…"
+                                    Padding="12,8"
+                                    HorizontalAlignment="Left"
+                                    Click="SendReview_Click"
+                                    Background="#25D366"
+                                    Foreground="White"
+                                    BorderThickness="0"
+                                    FontWeight="SemiBold"
+                                    Cursor="Hand" />
+                        </StackPanel>
+                    </Border>
+
+                    <TextBlock Foreground="#6B6258" FontSize="11" TextWrapping="Wrap"
+                               Text="A küldés a WhatsApp asztali vagy webes alkalmazásban nyílik meg előre kitöltött szöveggel. Az „Elküldve” jelölő automatikusan bekapcsol küldés után, és kézzel is állítható." />
+                </StackPanel>
+            </StackPanel>
+        </ScrollViewer>
+
+        <StackPanel Grid.Row="1" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,16,0,0">
+            <Button Content="Bezárás" Width="120" IsCancel="True" IsDefault="True" Click="Close_Click" />
+        </StackPanel>
+    </Grid>
+</Window>

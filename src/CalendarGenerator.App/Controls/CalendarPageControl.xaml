@@ -23,9 +23,9 @@
 
             <Grid x:Name="RootGrid" Grid.Row="1" Margin="22,6,22,18" ClipToBounds="False">
                 <Grid.RowDefinitions>
-                    <RowDefinition Height="1.15*" />
-                    <RowDefinition Height="Auto" />
-                    <RowDefinition Height="1.15*" />
+                    <!-- Larger photo band; month title overlays the bottom so photos can sit under it -->
+                    <RowDefinition Height="1.45*" />
+                    <RowDefinition Height="1.0*" />
                 </Grid.RowDefinitions>
 
                 <!-- Photo collage (static canvas for PDF, interactive editor for Preview) -->
@@ -46,31 +46,35 @@
                                        FontSize="22"
                                        Foreground="#88665544" />
                         </Border>
+
+                        <!-- Month title floats over the photos (bottom); photos may extend underneath -->
+                        <StackPanel x:Name="TitleHost"
+                                    VerticalAlignment="Bottom"
+                                    HorizontalAlignment="Center"
+                                    Margin="0,0,0,10"
+                                    IsHitTestVisible="False">
+                            <Border x:Name="TitleCard" Background="#CCFFFFFF" CornerRadius="8" Padding="18,6">
+                                <StackPanel>
+                                    <TextBlock x:Name="MonthTitle"
+                                               FontFamily="Georgia"
+                                               FontSize="32"
+                                               FontWeight="SemiBold"
+                                               Foreground="#2C2C2C"
+                                               HorizontalAlignment="Center" />
+                                    <TextBlock x:Name="YearTitle"
+                                               FontFamily="Georgia"
+                                               FontSize="15"
+                                               Foreground="#555555"
+                                               HorizontalAlignment="Center"
+                                               Margin="0,2,0,0" />
+                                </StackPanel>
+                            </Border>
+                        </StackPanel>
                     </Grid>
                 </Border>
 
-                <!-- Month header -->
-                <StackPanel x:Name="TitleHost" Grid.Row="1" Margin="0,10,0,8" HorizontalAlignment="Center">
-                    <Border x:Name="TitleCard" Background="#CCFFFFFF" CornerRadius="8" Padding="18,6">
-                        <StackPanel>
-                            <TextBlock x:Name="MonthTitle"
-                                       FontFamily="Georgia"
-                                       FontSize="32"
-                                       FontWeight="SemiBold"
-                                       Foreground="#2C2C2C"
-                                       HorizontalAlignment="Center" />
-                            <TextBlock x:Name="YearTitle"
-                                       FontFamily="Georgia"
-                                       FontSize="15"
-                                       Foreground="#555555"
-                                       HorizontalAlignment="Center"
-                                       Margin="0,2,0,0" />
-                        </StackPanel>
-                    </Border>
-                </StackPanel>
-
                 <!-- Calendar grid + event overlay -->
-                <Grid Grid.Row="2" ClipToBounds="False">
+                <Grid Grid.Row="1" ClipToBounds="False">
                     <Border x:Name="CalendarPanel"
                             BorderBrush="#66FFFFFF"
                             BorderThickness="1"
